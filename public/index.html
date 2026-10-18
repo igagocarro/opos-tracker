@@ -1,0 +1,986 @@
+<title>Opos Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --fg: #1a1917;
+    --fg2: #5c5a55;
+    --fg3: #9c9a94;
+    --accent: #2563d4;
+    --accent-dim: #dbeafe;
+    --green: #16a34a;
+    --green-dim: #dcfce7;
+    --amber: #d97706;
+    --amber-dim: #fef3c7;
+    --red: #dc2626;
+    --red-dim: #fee2e2;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141311; --surface: #1e1c19; --surface2: #262420; --border: #35332e;
+      --fg: #f0ede8; --fg2: #a09d97; --fg3: #6b6864;
+      --accent: #4a85f0; --accent-dim: #1e3a6e;
+      --green: #22c55e; --green-dim: #14532d;
+      --amber: #f59e0b; --amber-dim: #451a03;
+      --red: #f87171; --red-dim: #450a0a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141311; --surface: #1e1c19; --surface2: #262420; --border: #35332e;
+    --fg: #f0ede8; --fg2: #a09d97; --fg3: #6b6864;
+    --accent: #4a85f0; --accent-dim: #1e3a6e;
+    --green: #22c55e; --green-dim: #14532d;
+    --amber: #f59e0b; --amber-dim: #451a03;
+    --red: #f87171; --red-dim: #450a0a;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--fg);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto;
+    height: env(safe-area-inset-top, 0px);
+    z-index: 100;
+    background: var(--surface);
+  }
+
+  .app { display: flex; flex-direction: column; height: 100%; max-width: 480px; margin: 0 auto; }
+
+  /* Header */
+  .header {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding-block: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .header-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; letter-spacing: -0.02em; }
+  .header-logo { width: 28px; height: 28px; background: var(--accent); border-radius: 7px; display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 700; }
+  .header-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    color: var(--fg2);
+    font-size: 15px;
+    transition: background .15s, color .15s;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--surface2); color: var(--fg); }
+
+  /* Nav */
+  .nav { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
+  .nav-btn {
+    padding: 10px 4px 8px;
+    border: none; background: none; cursor: pointer;
+    color: var(--fg3); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border-bottom: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+  }
+  .nav-btn .nav-icon { font-size: 18px; line-height: 1; }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .nav-btn:hover:not(.active) { color: var(--fg); }
+
+  .main { flex: 1; overflow-y: auto; padding-block: 16px; }
+  .view { display: none; flex-direction: column; gap: 12px; }
+  .view.active { display: flex; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .card-header { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-title { font-weight: 600; font-size: 13px; }
+  .card-body { padding: 14px; }
+
+  /* Progress */
+  .progress-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--fg2); }
+  .progress-bar { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .3s; }
+  .progress-fill.green { background: var(--green); }
+
+  /* Stats */
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-box { background: var(--surface2); border-radius: 8px; padding: 10px 8px; text-align: center; }
+  .stat-num { font-size: 20px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat-label { font-size: 10px; color: var(--fg2); margin-top: 3px; letter-spacing: 0.03em; }
+  .stat-num.green { color: var(--green); }
+  .stat-num.amber { color: var(--amber); }
+  .stat-num.red { color: var(--red); }
+
+  /* Badge */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-accent { background: var(--accent-dim); color: var(--accent); }
+
+  /* Topic list */
+  .topic-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; -webkit-tap-highlight-color: transparent; }
+  .topic-item:last-child { border-bottom: none; }
+  .topic-item:hover, .topic-item:active { background: var(--surface2); }
+  .topic-num { width: 28px; height: 28px; border-radius: 7px; background: var(--surface2); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--fg2); flex-shrink: 0; font-variant-numeric: tabular-nums; font-family: 'JetBrains Mono', monospace; }
+  .topic-info { flex: 1; min-width: 0; }
+  .topic-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status-btn { width: 28px; height: 28px; border: none; background: none; cursor: pointer; font-size: 16px; display: grid; place-items: center; border-radius: 6px; flex-shrink: 0; transition: transform .15s; }
+  .status-btn:active { transform: scale(0.88); }
+
+  /* Week view */
+  .week-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .week-label { font-weight: 700; font-size: 14px; }
+  .week-sub { font-size: 11px; color: var(--fg3); margin-top: 2px; }
+  .week-nav { display: flex; gap: 4px; }
+  .day-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .day-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); }
+  .day-name { font-weight: 600; font-size: 13px; }
+  .day-date { font-size: 11px; color: var(--fg3); font-variant-numeric: tabular-nums; }
+  .day-session { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); }
+  .session-icon { font-size: 18px; flex-shrink: 0; }
+  .session-info { flex: 1; min-width: 0; }
+  .session-type { font-size: 12px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.04em; }
+  .session-topic { font-size: 13px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .check-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); background: transparent; cursor: pointer; display: grid; place-items: center; font-size: 13px; transition: all .15s; flex-shrink: 0; color: transparent; }
+  .check-btn.done { border-color: var(--green); background: var(--green); color: #fff; }
+  .check-btn.skipped { border-color: var(--amber); background: var(--amber-dim); color: var(--amber); }
+
+  /* Tests */
+  .test-form { display: flex; flex-direction: column; gap: 10px; }
+  .form-row { display: flex; flex-direction: column; gap: 4px; }
+  .form-label { font-size: 11px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.04em; }
+  .form-input, .form-select, .form-textarea {
+    padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface2); color: var(--fg); font-size: 13px;
+    font-family: 'Inter', system-ui; width: 100%;
+    transition: border-color .15s, background .15s; -webkit-appearance: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .score-row { display: flex; gap: 8px; align-items: center; }
+  .score-row .form-input { flex: 1; }
+  .score-display { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); min-width: 48px; text-align: center; }
+  .btn { padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s, transform .1s; font-family: 'Inter', system-ui; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-secondary { background: var(--surface2); color: var(--fg); border: 1px solid var(--border); }
+  .test-entry { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; cursor: pointer; transition: background .12s; }
+  .test-entry:last-child { border-bottom: none; }
+  .test-entry:hover { background: var(--surface2); }
+  .test-score-box { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .score-good { background: var(--green-dim); color: var(--green); }
+  .score-mid { background: var(--amber-dim); color: var(--amber); }
+  .score-low { background: var(--red-dim); color: var(--red); }
+  .test-details { flex: 1; min-width: 0; }
+  .test-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .test-meta { font-size: 11px; color: var(--fg3); margin-top: 2px; }
+  .test-wrong { font-size: 11px; color: var(--red); margin-top: 3px; }
+
+  /* Empty */
+  .empty { padding: 32px 16px; text-align: center; color: var(--fg3); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .empty-icon { font-size: 36px; }
+  .empty-text { font-size: 13px; }
+
+  /* Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; display: flex; align-items: flex-end; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+  .modal { background: var(--surface); border-radius: 14px; width: 100%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .modal-header { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 15px; font-weight: 700; }
+  .modal-body { padding: 16px; }
+
+  /* Sync banner */
+  .sync-banner { background: var(--amber-dim); border: 1px solid var(--amber); border-radius: var(--radius); padding: 10px 14px; font-size: 12px; color: var(--fg); display: flex; align-items: center; gap: 8px; }
+  .sync-banner.synced { background: var(--green-dim); border-color: var(--green); }
+
+  /* Login screen */
+  .login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 32px 16px; text-align: center; min-height: 60vh; }
+  .login-logo { width: 56px; height: 56px; background: var(--accent); border-radius: 14px; display: grid; place-items: center; font-size: 24px; font-weight: 700; color: #fff; margin: 0 auto; }
+
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+</style>
+
+<!-- Variables de entorno (generadas por build.sh en Vercel) -->
+<script src="_env.js"></script>
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">
+      <div class="header-logo">O</div>
+      Opos Tracker
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeBtn" title="Cambiar tema">☀</button>
+      <button class="icon-btn" id="syncBtn" title="Sync" id="syncBtn">⟳</button>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <button class="nav-btn active" data-view="resumen"><span class="nav-icon">📊</span>Resumen</button>
+    <button class="nav-btn" data-view="semana"><span class="nav-icon">📅</span>Semana</button>
+    <button class="nav-btn" data-view="temas"><span class="nav-icon">📚</span>Temas</button>
+    <button class="nav-btn" data-view="tests"><span class="nav-icon">✏️</span>Tests</button>
+  </nav>
+
+  <!-- Sync status banner -->
+  <div id="syncBanner" class="sync-banner" style="margin:8px 0 0;display:none">
+    <span id="syncBannerIcon">⚡</span>
+    <span id="syncBannerText">Conectando…</span>
+  </div>
+
+  <!-- Main -->
+  <main class="main" id="main">
+
+    <!-- RESUMEN -->
+    <div class="view active" id="view-resumen">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Progreso global</span>
+          <span class="badge badge-accent" id="currentPhaseLabel">Fase 1</span>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+          <div class="stat-grid">
+            <div class="stat-box"><div class="stat-num green" id="statControlados">0</div><div class="stat-label">✅ Controlados</div></div>
+            <div class="stat-box"><div class="stat-num amber" id="statRepaso">0</div><div class="stat-label">🔄 Repaso</div></div>
+            <div class="stat-box"><div class="stat-num red" id="statFlojos">0</div><div class="stat-label">❌ Flojos</div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Parte específica</span><span id="pctEspecifica">0%</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="barEspecifica" style="width:0%"></div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>General (sesiones bus)</span><span id="pctGeneral">0 sesiones</span></div>
+            <div class="progress-bar"><div class="progress-fill green" id="barGeneral" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Fase actual</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:4px" id="phaseName">Fase 1 · Bloques técnicos</div>
+            <div style="font-size:12px;color:var(--fg2)" id="phaseDates">19 oct – 28 dic 2026</div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Semanas de la fase</span><span id="phaseWeekProgress">0/10</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="phaseBar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Últimos tests</span>
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="switchView('tests')">Ver todos</button>
+        </div>
+        <div id="lastTests"><div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Todavía no hay tests guardados</div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Esta semana</span></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+          <div id="weekSessions"><div style="font-size:12px;color:var(--fg3)">Marca sesiones en la vista Semana</div></div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Sesiones completadas</span><span id="weekPct">0 marcadas</span></div>
+            <div class="progress-bar"><div class="progress-fill" id="weekBar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEMANA -->
+    <div class="view" id="view-semana">
+      <div class="week-header">
+        <div>
+          <div class="week-label" id="weekTitle">Semana —</div>
+          <div class="week-sub" id="weekRange">cargando…</div>
+        </div>
+        <div class="week-nav">
+          <button class="icon-btn" id="prevWeek">←</button>
+          <button class="icon-btn" id="nextWeek">→</button>
+        </div>
+      </div>
+      <div id="weekDays" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- TEMAS -->
+    <div class="view" id="view-temas">
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:8px">
+          <span class="card-title">58 temas · Parte específica</span>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterAll">Todos</button>
+            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterWeak">❌ Flojos</button>
+          </div>
+        </div>
+        <div id="temasList"></div>
+      </div>
+    </div>
+
+    <!-- TESTS -->
+    <div class="view" id="view-tests">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Nuevo test</span></div>
+        <div class="card-body">
+          <div class="test-form">
+            <div class="form-row">
+              <label class="form-label" for="testDate">Fecha</label>
+              <input class="form-input" type="date" id="testDate">
+            </div>
+            <div class="form-row">
+              <label class="form-label" for="testTema">Tema</label>
+              <select class="form-select" id="testTema">
+                <option value="">— selecciona tema —</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label class="form-label">Puntuación</label>
+              <div class="score-row">
+                <input class="form-input" type="number" id="testCorrect" placeholder="Aciertos" min="0" max="30">
+                <span style="color:var(--fg3);font-size:16px">/</span>
+                <input class="form-input" type="number" id="testTotal" placeholder="Total" min="1" max="30" value="10">
+                <div class="score-display" id="scoreDisplay">—</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label" for="testNotes">Preguntas falladas</label>
+              <textarea class="form-textarea" id="testNotes" placeholder="Anota las preguntas falladas para revisarlas…"></textarea>
+            </div>
+            <button class="btn btn-primary" id="saveTestBtn">Guardar test</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title" id="testListTitle">Historial de tests</span></div>
+        <div id="testsList"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Guarda tu primer test arriba</div></div></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal test detalle -->
+<div class="modal-backdrop" id="testModal" style="display:none" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Detalle</span>
+      <button class="icon-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Modal estado tema -->
+<div class="modal-backdrop" id="topicModal" style="display:none" onclick="closeTopicModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="topicModalTitle">Estado del tema</span>
+      <button class="icon-btn" onclick="closeTopicModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--fg2);margin-bottom:12px" id="topicModalName"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" style="background:var(--green-dim);color:var(--green);text-align:left;padding:12px 14px" onclick="setTopicStatus('ok')">✅ Controlado — lo domino, solo repaso puntual</button>
+        <button class="btn" style="background:var(--amber-dim);color:var(--amber);text-align:left;padding:12px 14px" onclick="setTopicStatus('review')">🔄 Repasable — lo entiendo pero necesito afianzar</button>
+        <button class="btn" style="background:var(--red-dim);color:var(--red);text-align:left;padding:12px 14px" onclick="setTopicStatus('weak')">❌ Flojo — hay que volver a él</button>
+        <button class="btn btn-secondary" onclick="setTopicStatus(null)">⬜ Sin marcar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── SUPABASE CONFIG ──────────────────────────────────
+   Estas variables se rellenan desde las variables de entorno de Vercel.
+   En desarrollo local, crea un fichero .env con estas dos líneas:
+     SUPABASE_URL=https://xxxx.supabase.co
+     SUPABASE_ANON_KEY=eyJ...
+   En Vercel, se configuran como Environment Variables en el panel.
+─────────────────────────────────────────────────────── */
+const SUPABASE_URL = window.__ENV?.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = window.__ENV?.SUPABASE_ANON_KEY || '';
+
+let db = null;
+let supabaseReady = false;
+
+function initSupabase() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    showSyncBanner('local', '⚡ Modo local — datos solo en este dispositivo');
+    return;
+  }
+  try {
+    db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseReady = true;
+    syncAll();
+  } catch(e) {
+    showSyncBanner('local', '⚠ Error al conectar Supabase');
+  }
+}
+
+function showSyncBanner(type, text) {
+  const b = document.getElementById('syncBanner');
+  const t = document.getElementById('syncBannerText');
+  const i = document.getElementById('syncBannerIcon');
+  b.style.display = 'flex';
+  t.textContent = text;
+  if (type === 'synced') { b.className = 'sync-banner synced'; i.textContent = '✓'; }
+  else if (type === 'local') { b.className = 'sync-banner'; i.textContent = '⚡'; }
+  else { b.className = 'sync-banner'; i.textContent = '⚠'; }
+}
+
+/* ─── DATA ─────────────────────────────────────────── */
+const TEMAS = [
+  {t:1,nombre:"Legislación y normativa estadística",bloque:"Legislación estadística"},
+  {t:2,nombre:"Secreto estadístico. Protección de datos",bloque:"Legislación estadística"},
+  {t:3,nombre:"Deontología y ética de la investigación",bloque:"Legislación estadística"},
+  {t:4,nombre:"Diseño muestral. Técnicas de muestreo",bloque:"Diseño muestral y errores"},
+  {t:5,nombre:"Fuentes de error en operaciones estadísticas",bloque:"Diseño muestral y errores"},
+  {t:6,nombre:"Calibración de pesos muestrales",bloque:"Diseño muestral y errores"},
+  {t:7,nombre:"Estadística descriptiva e inferencial",bloque:"Estadística descriptiva"},
+  {t:8,nombre:"Modelos estadísticos. Inferencia y modelización",bloque:"Estadística descriptiva"},
+  {t:9,nombre:"Análisis de correlación y regresión",bloque:"Estadística descriptiva"},
+  {t:10,nombre:"Pruebas de hipótesis. Paramétricas y no paramétricas",bloque:"Estadística descriptiva"},
+  {t:11,nombre:"Reducción y clasificación. Factorial y clusters",bloque:"Técnicas multivariantes"},
+  {t:12,nombre:"Probabilidad. Binomial, Poisson, Normal",bloque:"Técnicas multivariantes"},
+  {t:13,nombre:"Análisis de varianza (ANOVA)",bloque:"Técnicas multivariantes"},
+  {t:14,nombre:"Series temporales. ARIMA",bloque:"Técnicas multivariantes"},
+  {t:15,nombre:"Correspondencias. Tablas de contingencias. Discriminante",bloque:"Técnicas multivariantes"},
+  {t:16,nombre:"Fenómenos demográficos. Reto demográfico en Euskadi",bloque:"Demografía y cuentas"},
+  {t:17,nombre:"Sistema Europeo de Cuentas (SEC). Contabilidad nacional",bloque:"Demografía y cuentas"},
+  {t:18,nombre:"Contabilidad pública y de empresa. PGC Público",bloque:"Demografía y cuentas"},
+  {t:19,nombre:"Indicadores y números índices. Tipos. Año base",bloque:"Índices e indicadores"},
+  {t:20,nombre:"Estadísticas e indicadores coyunturales y estructurales",bloque:"Índices e indicadores"},
+  {t:21,nombre:"Callejero de la CAPV. Ubicaciones geográficas",bloque:"Operaciones estadísticas"},
+  {t:22,nombre:"Diseño de operaciones estadísticas. Ficha metodológica",bloque:"Operaciones estadísticas"},
+  {t:23,nombre:"Trabajos de campo. Técnicas de encuesta",bloque:"Operaciones estadísticas"},
+  {t:24,nombre:"Sistemas de metadatos. Estándares. Clasificaciones",bloque:"Operaciones estadísticas"},
+  {t:25,nombre:"Recogida de información. Fuentes. Monitorización",bloque:"Operaciones estadísticas"},
+  {t:26,nombre:"Fuentes administrativas con fines estadísticos",bloque:"Operaciones estadísticas"},
+  {t:27,nombre:"Bases de datos. Tipos de origen. Fusión de ficheros",bloque:"Operaciones estadísticas"},
+  {t:28,nombre:"Depuración e imputación de datos",bloque:"Operaciones estadísticas"},
+  {t:29,nombre:"Calidad de la información estadística oficial",bloque:"Operaciones estadísticas"},
+  {t:30,nombre:"Difusión estadística. Bancos de datos. Visualización",bloque:"Difusión y reutilización"},
+  {t:31,nombre:"Reutilización de datos. APIs. Portales de datos abiertos",bloque:"Difusión y reutilización"},
+  {t:32,nombre:"SAS, SPSS, R, Python, Excel, PowerBI, PC-AXIS, BLAISE",bloque:"Herramientas informáticas"},
+  {t:33,nombre:"La investigación social. Tipos y métodos",bloque:"Investigación social"},
+  {t:34,nombre:"Investigación cualitativa. Diseño y muestreo",bloque:"Investigación social"},
+  {t:35,nombre:"Técnicas cualitativas: entrevista, grupo de discusión, Delphi",bloque:"Investigación social"},
+  {t:36,nombre:"Investigación social participativa (IAP)",bloque:"Investigación social"},
+  {t:37,nombre:"Enfoque de género en la investigación",bloque:"Investigación social"},
+  {t:38,nombre:"Elaboración de planes estratégicos de políticas públicas",bloque:"Evaluación de políticas"},
+  {t:39,nombre:"Evaluación de políticas públicas: definición",bloque:"Evaluación de políticas"},
+  {t:40,nombre:"Institucionalización de la evaluación de políticas",bloque:"Evaluación de políticas"},
+  {t:41,nombre:"Pasos para diseñar y realizar una evaluación",bloque:"Evaluación de políticas"},
+  {t:42,nombre:"Indicadores para la evaluación de políticas y planes",bloque:"Evaluación de políticas"},
+  {t:43,nombre:"Metodología cualitativa en evaluación de políticas",bloque:"Evaluación de políticas"},
+  {t:44,nombre:"El proceso electoral. Sistemas electorales. Ley D'Hondt",bloque:"Procesos electorales"},
+  {t:45,nombre:"Previsiones electorales. Dificultades y posibilidades",bloque:"Procesos electorales"},
+  {t:46,nombre:"Marco normativo CAE sobre juventud",bloque:"Políticas sectoriales vascas"},
+  {t:47,nombre:"Marco normativo CAE sobre infancia y adolescencia",bloque:"Políticas sectoriales vascas"},
+  {t:48,nombre:"Investigación sobre infancia y juventud en el GV",bloque:"Políticas sectoriales vascas"},
+  {t:49,nombre:"Marco normativo CAPV sobre servicios sociales",bloque:"Políticas sectoriales vascas"},
+  {t:50,nombre:"Investigación sobre servicios sociales en el GV",bloque:"Políticas sectoriales vascas"},
+  {t:51,nombre:"El espacio sociosanitario en Euskadi",bloque:"Políticas sectoriales vascas"},
+  {t:52,nombre:"Estrategia de atención sociosanitaria de Euskadi",bloque:"Políticas sectoriales vascas"},
+  {t:53,nombre:"Plan Estratégico de Cultura",bloque:"Políticas sectoriales vascas"},
+  {t:54,nombre:"Investigación sobre cultura en el GV",bloque:"Políticas sectoriales vascas"},
+  {t:55,nombre:"ODS Agenda 2030. Indicadores y metas",bloque:"Agenda 2030 y nuevas tecnologías"},
+  {t:56,nombre:"Big Data, IA, Data Mining, Web scraping",bloque:"Agenda 2030 y nuevas tecnologías"},
+  {t:57,nombre:"Gobernanza de datos. Gobierno Digital",bloque:"Agenda 2030 y nuevas tecnologías"},
+  {t:58,nombre:"Transferencia de datos. Interoperabilidad. ENS. ENI",bloque:"Agenda 2030 y nuevas tecnologías"},
+];
+
+const PHASES = [
+  {name:"Fase 1 · Bloques técnicos",start:"2026-10-19",end:"2026-12-28",totalWeeks:10},
+  {name:"Fase 2 · Bloques memorísticos",start:"2027-01-05",end:"2027-02-22",totalWeeks:7},
+  {name:"Fase 3 · Políticas sectoriales",start:"2027-02-23",end:"2027-03-15",totalWeeks:3},
+  {name:"Mes intensivo · Repaso",start:"2027-03-16",end:"2027-04-14",totalWeeks:4},
+];
+
+const WEEK_PLAN = [
+  {week:1,bloque:"Diseño muestral y errores",temas:[4,5,6]},
+  {week:2,bloque:"Diseño muestral y errores",temas:[4,5,6]},
+  {week:3,bloque:"Estadística descriptiva e inferencial",temas:[7,8,9,10]},
+  {week:4,bloque:"Estadística descriptiva e inferencial",temas:[7,8,9,10]},
+  {week:5,bloque:"Técnicas multivariantes",temas:[11,12,13,14,15]},
+  {week:6,bloque:"Técnicas multivariantes",temas:[11,12,13,14,15]},
+  {week:7,bloque:"Índices, operaciones, calidad",temas:[19,20,27,28,29]},
+  {week:8,bloque:"Índices, operaciones, calidad",temas:[19,20,27,28,29]},
+  {week:9,bloque:"Metadatos, diseño, fuentes",temas:[21,22,23,24,25,26]},
+  {week:10,bloque:"Metadatos, diseño, fuentes",temas:[21,22,23,24,25,26]},
+  {week:11,bloque:"Legislación estadística",temas:[1,2,3]},
+  {week:12,bloque:"Legislación estadística",temas:[1,2,3]},
+  {week:13,bloque:"Demografía y cuentas nacionales",temas:[16,17,18]},
+  {week:14,bloque:"Demografía y cuentas nacionales",temas:[16,17,18]},
+  {week:15,bloque:"Difusión, APIs, herramientas",temas:[30,31,32]},
+  {week:16,bloque:"Investigación social y cualitativa",temas:[33,34,35,36,37]},
+  {week:17,bloque:"Investigación social y cualitativa",temas:[33,34,35,36,37]},
+  {week:18,bloque:"Evaluación y procesos electorales",temas:[38,39,40,41,42,43,44,45]},
+  {week:19,bloque:"Evaluación y procesos electorales",temas:[38,39,40,41,42,43,44,45]},
+  {week:20,bloque:"Políticas sectoriales vascas",temas:[46,47,48,49,50,51,52,53,54]},
+  {week:21,bloque:"Agenda 2030 y nuevas tecnologías",temas:[55,56,57,58]},
+  {week:22,bloque:"Repaso general + T55-58",temas:[]},
+  {week:23,bloque:"Repaso bloques técnicos",temas:[]},
+  {week:24,bloque:"Repaso bloques memorísticos + simulacro",temas:[]},
+  {week:25,bloque:"Simulacro completo · últimas jornadas",temas:[]},
+];
+
+/* ─── STATE ─────────────────────────────────────────── */
+let state = { topicStatus:{}, sessions:{}, tests:[] };
+
+function loadLocal() {
+  try { const s = localStorage.getItem('opos-v2'); if(s) state = {...state,...JSON.parse(s)}; } catch(e){}
+}
+function saveLocal() {
+  try { localStorage.setItem('opos-v2', JSON.stringify(state)); } catch(e){}
+}
+
+/* ─── SUPABASE SYNC ─────────────────────────────────── */
+async function syncAll() {
+  if (!supabaseReady) return;
+  showSyncBanner('local', '⟳ Sincronizando…');
+  try {
+    // Load topic statuses
+    const {data: statuses} = await db.from('topic_status').select('*');
+    if (statuses) statuses.forEach(r => { state.topicStatus[r.topic_num] = r.status; });
+
+    // Load sessions
+    const {data: sessions} = await db.from('sessions').select('*');
+    if (sessions) sessions.forEach(r => { state.sessions[r.session_key] = r.status; });
+
+    // Load tests
+    const {data: tests} = await db.from('tests').select('*').order('date', {ascending:false});
+    if (tests) state.tests = tests;
+
+    saveLocal();
+    showSyncBanner('synced', '✓ Sincronizado · ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}));
+    renderResumen();
+    renderTemas();
+    renderTests();
+  } catch(e) {
+    showSyncBanner('error', '⚠ Error de sincronización');
+  }
+}
+
+async function saveTopicStatus(topicNum, status) {
+  if (!supabaseReady) { saveLocal(); return; }
+  try {
+    if (status) {
+      await db.from('topic_status').upsert({topic_num: topicNum, status, updated_at: new Date().toISOString()});
+    } else {
+      await db.from('topic_status').delete().eq('topic_num', topicNum);
+    }
+  } catch(e) { console.warn('Sync error:', e); }
+}
+
+async function saveSession(key, status) {
+  if (!supabaseReady) { saveLocal(); return; }
+  try {
+    if (status) {
+      await db.from('sessions').upsert({session_key: key, status, updated_at: new Date().toISOString()});
+    } else {
+      await db.from('sessions').delete().eq('session_key', key);
+    }
+  } catch(e) { console.warn('Sync error:', e); }
+}
+
+async function saveTest(entry) {
+  if (!supabaseReady) { saveLocal(); return entry; }
+  try {
+    const {data} = await db.from('tests').insert({
+      date: entry.date,
+      tema: entry.tema,
+      correct: entry.correct,
+      total: entry.total,
+      notes: entry.notes,
+    }).select().single();
+    return data || entry;
+  } catch(e) { console.warn('Sync error:', e); return entry; }
+}
+
+async function deleteTestDB(id) {
+  if (!supabaseReady) { saveLocal(); return; }
+  try { await db.from('tests').delete().eq('id', id); } catch(e) {}
+}
+
+/* ─── THEME ─────────────────────────────────────────── */
+let theme = 'system';
+function applyTheme() {
+  try { theme = localStorage.getItem('opos-theme') || 'system'; } catch(e){}
+  document.documentElement.removeAttribute('data-theme');
+  if (theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  else if (theme === 'light') document.documentElement.setAttribute('data-theme','light');
+  document.getElementById('themeBtn').textContent = theme === 'dark' ? '☀' : theme === 'light' ? '🌙' : '⊙';
+}
+document.getElementById('themeBtn').addEventListener('click', () => {
+  theme = theme === 'system' ? 'dark' : theme === 'dark' ? 'light' : 'system';
+  try { localStorage.setItem('opos-theme', theme); } catch(e){}
+  applyTheme();
+});
+
+/* ─── NAV ───────────────────────────────────────────── */
+function switchView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelector(`[data-view="${id}"]`).classList.add('active');
+  if (id === 'semana') renderWeek();
+  if (id === 'temas') renderTemas();
+  if (id === 'tests') renderTests();
+  if (id === 'resumen') renderResumen();
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+
+/* ─── HELPERS ───────────────────────────────────────── */
+function today() { return new Date().toISOString().split('T')[0]; }
+function parseDate(s) { return new Date(s+'T12:00:00'); }
+function fmtDate(s) { return parseDate(s).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
+function weekStart(d) {
+  const dt = new Date(d+'T12:00:00');
+  const day = dt.getDay();
+  dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day));
+  return dt.toISOString().split('T')[0];
+}
+function addDays(d, n) {
+  const dt = new Date(d+'T12:00:00');
+  dt.setDate(dt.getDate()+n);
+  return dt.toISOString().split('T')[0];
+}
+function currentPhase() {
+  const t = today();
+  for (let i=0;i<PHASES.length;i++) if(t>=PHASES[i].start&&t<=PHASES[i].end) return i;
+  return t < PHASES[0].start ? 0 : PHASES.length-1;
+}
+
+/* ─── WEEK VIEW ─────────────────────────────────────── */
+let viewingWeekStart = null;
+
+function renderWeek() {
+  if (!viewingWeekStart) viewingWeekStart = weekStart(today());
+  const ws = viewingWeekStart;
+  const we = addDays(ws, 6);
+  const startAbs = parseDate('2026-10-14');
+  const weekIdx = Math.max(1, Math.min(Math.floor((parseDate(ws)-startAbs)/(7*24*3600*1000))+1, 25));
+  const plan = WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0];
+
+  const wsLabel = parseDate(ws).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+  const weLabel = parseDate(we).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+  document.getElementById('weekTitle').textContent = `Semana ${weekIdx} del planning`;
+  document.getElementById('weekRange').textContent = `${wsLabel} – ${weLabel}`;
+
+  const DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const container = document.getElementById('weekDays');
+  container.innerHTML = '';
+
+  for (let i=0;i<7;i++) {
+    const dateStr = addDays(ws, i);
+    const isToday = dateStr === today();
+    const isSat = i === 5, isSun = i === 6;
+    const isOffice = (i===1||i===3||i===4);
+
+    const sessions = [];
+    if (!isSun) {
+      sessions.push({
+        type: isSat ? 'específica intensiva' : 'específica',
+        icon: isSat ? '🔥' : '📚',
+        topic: plan.bloque,
+        key: `${dateStr}:especifica`,
+      });
+    }
+    if (isOffice) {
+      sessions.push({type:'general · bus',icon:'🚌',topic:'NotebookLM podcast + test',key:`${dateStr}:general`});
+    }
+    if (isSun) {
+      sessions.push({type:'test / repaso o descanso',icon:'✏️',topic:'Tests tipo examen',key:`${dateStr}:domingo`});
+    }
+
+    const card = document.createElement('div');
+    card.className = 'day-card';
+    if (isToday) card.style.border = '2px solid var(--accent)';
+
+    card.innerHTML = `<div class="day-header">
+      <div class="day-name">${DAY_NAMES[i]}${isToday?' · Hoy':''}</div>
+      <div class="day-date">${parseDate(dateStr).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</div>
+    </div>` + sessions.map(s => {
+      const st = state.sessions[s.key];
+      const btnClass = st==='done'?'done':st==='skipped'?'skipped':'';
+      const btnChar = st==='done'?'✓':st==='skipped'?'~':'';
+      return `<div class="day-session">
+        <div class="session-icon">${s.icon}</div>
+        <div class="session-info">
+          <div class="session-type">${s.type}</div>
+          <div class="session-topic">${s.topic}</div>
+        </div>
+        <button class="check-btn ${btnClass}" data-key="${s.key}">${btnChar}</button>
+      </div>`;
+    }).join('');
+
+    container.appendChild(card);
+  }
+
+  container.querySelectorAll('.check-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const key = this.dataset.key;
+      const cur = state.sessions[key];
+      const next = !cur ? 'done' : cur==='done' ? 'skipped' : null;
+      if (next) state.sessions[key] = next;
+      else delete state.sessions[key];
+      saveLocal();
+      await saveSession(key, next);
+      renderWeek();
+      renderResumen();
+    });
+  });
+
+  document.getElementById('prevWeek').onclick = () => { viewingWeekStart = addDays(viewingWeekStart,-7); renderWeek(); };
+  document.getElementById('nextWeek').onclick = () => { viewingWeekStart = addDays(viewingWeekStart,7); renderWeek(); };
+}
+
+/* ─── TEMAS ─────────────────────────────────────────── */
+let temasFilter = 'all';
+let selectedTopic = null;
+
+function renderTemas() {
+  const list = document.getElementById('temasList');
+  const items = temasFilter === 'weak' ? TEMAS.filter(t => !state.topicStatus[t.t] || state.topicStatus[t.t]==='weak') : TEMAS;
+  if (!items.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">¡No hay temas flojos!</div></div>'; return; }
+  let lastBloque = null;
+  list.innerHTML = items.map(tema => {
+    const st = state.topicStatus[tema.t];
+    const icon = st==='ok'?'✅':st==='review'?'🔄':st==='weak'?'❌':'⬜';
+    let hdr = '';
+    if (tema.bloque !== lastBloque) { lastBloque = tema.bloque; hdr = `<div style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--border)">${tema.bloque}</div>`; }
+    return `${hdr}<div class="topic-item" data-t="${tema.t}">
+      <div class="topic-num">${String(tema.t).padStart(2,'0')}</div>
+      <div class="topic-info"><div class="topic-name">${tema.nombre}</div></div>
+      <button class="status-btn" data-t="${tema.t}">${icon}</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.status-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openTopicModal(parseInt(btn.dataset.t)); });
+  });
+}
+
+document.getElementById('filterAll').addEventListener('click', () => { temasFilter='all'; renderTemas(); });
+document.getElementById('filterWeak').addEventListener('click', () => { temasFilter='weak'; renderTemas(); });
+
+function openTopicModal(t) {
+  selectedTopic = t;
+  const tema = TEMAS.find(x=>x.t===t);
+  document.getElementById('topicModalTitle').textContent = `T${String(t).padStart(2,'0')} · Estado`;
+  document.getElementById('topicModalName').textContent = tema?.nombre || '';
+  document.getElementById('topicModal').style.display = 'flex';
+}
+function closeTopicModal(e) { if(!e||e.target===document.getElementById('topicModal')) document.getElementById('topicModal').style.display='none'; }
+async function setTopicStatus(status) {
+  if (selectedTopic !== null) {
+    if (status) state.topicStatus[selectedTopic] = status;
+    else delete state.topicStatus[selectedTopic];
+    saveLocal();
+    await saveTopicStatus(selectedTopic, status);
+    renderTemas(); renderResumen();
+  }
+  document.getElementById('topicModal').style.display = 'none';
+  selectedTopic = null;
+}
+
+/* ─── TESTS ─────────────────────────────────────────── */
+function populateTemasSelect() {
+  const sel = document.getElementById('testTema');
+  TEMAS.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.t;
+    o.textContent = `T${String(t.t).padStart(2,'0')} — ${t.nombre}`;
+    sel.appendChild(o);
+  });
+}
+
+function updateScoreDisplay() {
+  const c = parseInt(document.getElementById('testCorrect').value);
+  const tot = parseInt(document.getElementById('testTotal').value);
+  const disp = document.getElementById('scoreDisplay');
+  if (!isNaN(c) && !isNaN(tot) && tot>0) {
+    const pct = Math.round(c/tot*100);
+    disp.textContent = pct+'%';
+    disp.style.color = pct>=70?'var(--green)':pct>=50?'var(--amber)':'var(--red)';
+  } else { disp.textContent='—'; disp.style.color='var(--accent)'; }
+}
+document.getElementById('testCorrect').addEventListener('input', updateScoreDisplay);
+document.getElementById('testTotal').addEventListener('input', updateScoreDisplay);
+document.getElementById('testDate').value = today();
+
+document.getElementById('saveTestBtn').addEventListener('click', async () => {
+  const date = document.getElementById('testDate').value;
+  const tema = document.getElementById('testTema').value;
+  const correct = parseInt(document.getElementById('testCorrect').value);
+  const total = parseInt(document.getElementById('testTotal').value);
+  const notes = document.getElementById('testNotes').value.trim();
+  if (!date||!tema||isNaN(correct)||isNaN(total)) {
+    const btn = document.getElementById('saveTestBtn');
+    btn.textContent='⚠ Completa los campos';
+    setTimeout(()=>btn.textContent='Guardar test',2000); return;
+  }
+  const entry = {id:Date.now(),date,tema:parseInt(tema),correct,total,notes};
+  const saved = await saveTest(entry);
+  state.tests.unshift(saved||entry);
+  saveLocal();
+  document.getElementById('testTema').value='';
+  document.getElementById('testCorrect').value='';
+  document.getElementById('testTotal').value='10';
+  document.getElementById('testNotes').value='';
+  document.getElementById('testDate').value=today();
+  updateScoreDisplay();
+  renderTests(); renderResumen();
+  const btn = document.getElementById('saveTestBtn');
+  btn.textContent='✓ Guardado';
+  setTimeout(()=>btn.textContent='Guardar test',1500);
+});
+
+function renderTests() {
+  const container = document.getElementById('testsList');
+  document.getElementById('testListTitle').textContent=`Historial de tests (${state.tests.length})`;
+  if (!state.tests.length) { container.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Guarda tu primer test arriba</div></div>'; return; }
+  container.innerHTML = state.tests.slice(0,50).map(e => {
+    const tema = TEMAS.find(t=>t.t===e.tema);
+    const pct = Math.round(e.correct/e.total*100);
+    const sc = pct>=70?'score-good':pct>=50?'score-mid':'score-low';
+    const wr = e.notes?`<div class="test-wrong">Notas: ${e.notes.substring(0,60)}${e.notes.length>60?'…':''}</div>`:'';
+    return `<div class="test-entry" data-id="${e.id}">
+      <div class="test-score-box ${sc}">${pct}%</div>
+      <div class="test-details">
+        <div class="test-title">T${String(e.tema).padStart(2,'0')} — ${tema?.nombre?.substring(0,40)||'Tema '+e.tema}</div>
+        <div class="test-meta">${fmtDate(e.date)} · ${e.correct}/${e.total} aciertos</div>${wr}
+      </div>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.test-entry').forEach(el => el.addEventListener('click',()=>openTestModal(parseInt(el.dataset.id))));
+}
+
+function openTestModal(id) {
+  const e = state.tests.find(t=>t.id===id); if(!e) return;
+  const tema = TEMAS.find(t=>t.t===e.tema);
+  const pct = Math.round(e.correct/e.total*100);
+  const sc = pct>=70?'score-good':pct>=50?'score-mid':'score-low';
+  document.getElementById('modalTitle').textContent=`T${String(e.tema).padStart(2,'0')} — Test`;
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div class="test-score-box ${sc}" style="width:56px;height:56px;font-size:18px;border-radius:12px">${pct}%</div>
+      <div><div style="font-size:14px;font-weight:600">${tema?.nombre||'Tema '+e.tema}</div>
+      <div style="font-size:12px;color:var(--fg2);margin-top:3px">${fmtDate(e.date)} · ${e.correct}/${e.total} aciertos</div></div>
+    </div>
+    ${e.notes?`<div style="background:var(--red-dim);border-radius:8px;padding:12px;font-size:13px">
+      <div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">❌ Preguntas falladas / notas</div>
+      ${e.notes.replace(/\n/g,'<br>')}
+    </div>`:'<div style="font-size:13px;color:var(--fg3)">Sin notas de preguntas falladas</div>'}
+    <button class="btn btn-secondary" style="margin-top:14px;width:100%;color:var(--red)" onclick="deleteTest(${id})">Eliminar test</button>`;
+  document.getElementById('testModal').style.display='flex';
+}
+
+async function deleteTest(id) {
+  state.tests = state.tests.filter(t=>t.id!==id);
+  saveLocal();
+  await deleteTestDB(id);
+  closeModal(); renderTests(); renderResumen();
+}
+function closeModal(e) { if(!e||e.target===document.getElementById('testModal')) document.getElementById('testModal').style.display='none'; }
+
+/* ─── RESUMEN ───────────────────────────────────────── */
+function renderResumen() {
+  const controlados = Object.values(state.topicStatus).filter(v=>v==='ok').length;
+  const repaso = Object.values(state.topicStatus).filter(v=>v==='review').length;
+  const flojos = Object.values(state.topicStatus).filter(v=>v==='weak').length;
+  const done = controlados+repaso+flojos;
+  document.getElementById('statControlados').textContent=controlados;
+  document.getElementById('statRepaso').textContent=repaso;
+  document.getElementById('statFlojos').textContent=flojos;
+  document.getElementById('barEspecifica').style.width=Math.round(done/58*100)+'%';
+  document.getElementById('pctEspecifica').textContent=Math.round(done/58*100)+'%';
+  const busOk = Object.keys(state.sessions).filter(k=>k.includes(':general')&&state.sessions[k]==='done').length;
+  document.getElementById('barGeneral').style.width=Math.min(100,Math.round(busOk/75*100))+'%';
+  document.getElementById('pctGeneral').textContent=busOk+' sesiones';
+  const phIdx = currentPhase();
+  const ph = PHASES[phIdx];
+  document.getElementById('currentPhaseLabel').textContent=`Fase ${phIdx+1}`;
+  document.getElementById('phaseName').textContent=ph.name;
+  document.getElementById('phaseDates').textContent=`${fmtDate(ph.start)} – ${fmtDate(ph.end)}`;
+  const phStart=parseDate(ph.start),phEnd=parseDate(ph.end),now=new Date();
+  const prog=Math.max(0,Math.min(1,(now-phStart)/(phEnd-phStart)));
+  const phW=Math.ceil(prog*ph.totalWeeks);
+  document.getElementById('phaseWeekProgress').textContent=`${phW}/${ph.totalWeeks}`;
+  document.getElementById('phaseBar').style.width=Math.round(prog*100)+'%';
+  const ws=weekStart(today());
+  const thisWeekKeys=Object.keys(state.sessions).filter(k=>{const d=k.split(':')[0];return d>=ws&&d<=addDays(ws,6);});
+  const thisWeekDone=thisWeekKeys.filter(k=>state.sessions[k]==='done').length;
+  document.getElementById('weekPct').textContent=`${thisWeekDone} completadas`;
+  document.getElementById('weekBar').style.width=(thisWeekKeys.length>0?Math.round(thisWeekDone/thisWeekKeys.length*100):0)+'%';
+  const DAY_NAMES=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const sessionLines=thisWeekKeys.map(k=>{
+    const parts=k.split(':'),d=parts[0],type=parts[1];
+    const day=new Date(d+'T12:00:00').getDay();
+    const dayName=DAY_NAMES[day===0?6:day-1];
+    const s=state.sessions[k];
+    return `<div style="display:flex;gap:8px;font-size:12px;padding:3px 0"><span>${s==='done'?'✅':'⏭'}</span><span style="color:var(--fg2)">${dayName}</span><span>${type}</span></div>`;
+  });
+  document.getElementById('weekSessions').innerHTML=sessionLines.length?sessionLines.join(''):'<div style="font-size:12px;color:var(--fg3)">Marca sesiones en la vista Semana</div>';
+  const lastTestsEl=document.getElementById('lastTests');
+  if (!state.tests.length) { lastTestsEl.innerHTML='<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Todavía no hay tests guardados</div></div>'; return; }
+  lastTestsEl.innerHTML=state.tests.slice(0,3).map(e=>{
+    const tema=TEMAS.find(t=>t.t===e.tema);
+    const pct=Math.round(e.correct/e.total*100);
+    const sc=pct>=70?'score-good':pct>=50?'score-mid':'score-low';
+    return `<div class="test-entry"><div class="test-score-box ${sc}">${pct}%</div><div class="test-details"><div class="test-title">T${String(e.tema).padStart(2,'0')} — ${tema?.nombre?.substring(0,35)||''}</div><div class="test-meta">${fmtDate(e.date)} · ${e.correct}/${e.total}</div></div></div>`;
+  }).join('');
+}
+
+/* ─── SYNC BTN ───────────────────────────────────────── */
+document.getElementById('syncBtn').addEventListener('click', () => { if(supabaseReady) syncAll(); else showSyncInfo(); });
+function showSyncInfo() {
+  document.getElementById('modalTitle').textContent='Sincronización';
+  document.getElementById('modalBody').innerHTML=`<div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+    <div style="background:var(--amber-dim);border-radius:8px;padding:12px">
+      <div style="font-weight:600;color:var(--amber);margin-bottom:4px">⚡ Modo local activo</div>
+      Los datos se guardan solo en este dispositivo. Cuando tengas Supabase configurado se activará la sincronización automática.
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Datos guardados</div>
+      <div>Tests: <strong>${state.tests.length}</strong></div>
+      <div>Temas marcados: <strong>${Object.keys(state.topicStatus).length}</strong></div>
+      <div>Sesiones: <strong>${Object.keys(state.sessions).length}</strong></div>
+    </div>
+  </div>`;
+  document.getElementById('testModal').style.display='flex';
+}
+
+/* ─── INIT ───────────────────────────────────────────── */
+loadLocal();
+applyTheme();
+populateTemasSelect();
+renderResumen();
+initSupabase();
+</script>
