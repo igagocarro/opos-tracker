@@ -682,10 +682,10 @@ function currentPhase() {
 let viewingWeekStart = null;
 
 function renderWeek() {
-  if (!viewingWeekStart) viewingWeekStart = weekStart(today());
+  if (!viewingWeekStart) viewingWeekStart = weekStart(today()) < '2026-10-19' ? '2026-10-19' : weekStart(today());
   const ws = viewingWeekStart;
   const we = addDays(ws, 6);
-  const startAbs = parseDate('2026-10-14');
+  const startAbs = parseDate('2026-10-19'); // Semana 1 empieza el lunes 19 oct
   const weekIdx = Math.max(1, Math.min(Math.floor((parseDate(ws)-startAbs)/(7*24*3600*1000))+1, 25));
   const plan = WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0];
 
