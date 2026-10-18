@@ -91,23 +91,26 @@
     place-items: center;
     color: var(--fg2);
     font-size: 15px;
-    transition: background .15s, color .15s;
+    transition: background .15s, color .15s, border-color .15s;
     flex-shrink: 0;
   }
   .icon-btn:hover { background: var(--surface2); color: var(--fg); }
+  /* Sync button states */
+  .icon-btn.sync-ok { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .icon-btn.sync-err { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
 
-  /* Nav */
-  .nav { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
+  /* Nav — 5 tabs */
+  .nav { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
   .nav-btn {
-    padding: 10px 4px 8px;
+    padding: 10px 2px 8px;
     border: none; background: none; cursor: pointer;
-    color: var(--fg3); font-size: 10px; font-weight: 600;
+    color: var(--fg3); font-size: 9px; font-weight: 600;
     letter-spacing: 0.04em; text-transform: uppercase;
     display: flex; flex-direction: column; align-items: center; gap: 3px;
     border-bottom: 2px solid transparent;
     transition: color .15s, border-color .15s;
   }
-  .nav-btn .nav-icon { font-size: 18px; line-height: 1; }
+  .nav-btn .nav-icon { font-size: 17px; line-height: 1; }
   .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .nav-btn:hover:not(.active) { color: var(--fg); }
 
@@ -151,23 +154,125 @@
   .status-btn { width: 28px; height: 28px; border: none; background: none; cursor: pointer; font-size: 16px; display: grid; place-items: center; border-radius: 6px; flex-shrink: 0; transition: transform .15s; }
   .status-btn:active { transform: scale(0.88); }
 
-  /* Week view */
-  .week-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  /* ── WEEK VIEW redesign ── */
+  .week-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  }
   .week-label { font-weight: 700; font-size: 14px; }
   .week-sub { font-size: 11px; color: var(--fg3); margin-top: 2px; }
   .week-nav { display: flex; gap: 4px; }
-  .day-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .day-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); }
-  .day-name { font-weight: 600; font-size: 13px; }
-  .day-date { font-size: 11px; color: var(--fg3); font-variant-numeric: tabular-nums; }
-  .day-session { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); }
-  .session-icon { font-size: 18px; flex-shrink: 0; }
-  .session-info { flex: 1; min-width: 0; }
-  .session-type { font-size: 12px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.04em; }
-  .session-topic { font-size: 13px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .check-btn { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border); background: transparent; cursor: pointer; display: grid; place-items: center; font-size: 13px; transition: all .15s; flex-shrink: 0; color: transparent; }
+
+  /* 7-day grid */
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .day-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    cursor: pointer;
+    transition: background .12s, border-color .15s;
+    -webkit-tap-highlight-color: transparent;
+    min-width: 0;
+  }
+  .day-cell:hover { background: var(--surface2); }
+  .day-cell.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .day-cell.is-today { border-color: var(--accent); }
+  .day-cell.is-today.selected { background: var(--accent-dim); }
+  .day-cell-name { font-size: 9px; font-weight: 700; color: var(--fg3); text-transform: uppercase; letter-spacing: 0.04em; }
+  .day-cell.selected .day-cell-name { color: var(--accent); }
+  .day-cell-date { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; }
+  .day-cell-icons { display: flex; gap: 1px; flex-wrap: wrap; justify-content: center; font-size: 13px; line-height: 1; min-height: 14px; }
+
+  /* Day detail rows */
+  .day-detail-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .day-detail-header {
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .day-detail-title { font-weight: 600; font-size: 13px; }
+  .day-detail-sub { font-size: 11px; color: var(--fg3); }
+
+  .session-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    transition: background .12s;
+  }
+  .session-row:first-child { border-top: none; }
+  .session-row-icon { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+  .session-row-info { flex: 1; min-width: 0; }
+  .session-row-type { font-size: 11px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.04em; }
+  .session-row-topics { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+  .session-topic-line {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--fg);
+  }
+  .session-topic-num {
+    font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    background: var(--surface2); border-radius: 4px; padding: 1px 4px;
+    color: var(--fg2); flex-shrink: 0;
+  }
+  .session-topic-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .session-topic-status { font-size: 13px; flex-shrink: 0; }
+
+  .check-btn {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+    background: transparent; cursor: pointer; display: grid; place-items: center;
+    font-size: 13px; transition: all .15s; flex-shrink: 0; color: transparent; margin-top: 2px;
+  }
   .check-btn.done { border-color: var(--green); background: var(--green); color: #fff; }
-  .check-btn.skipped { border-color: var(--amber); background: var(--amber-dim); color: var(--amber); }
+
+  /* descanso cell */
+  .rest-row { padding: 16px 14px; text-align: center; color: var(--fg3); font-size: 13px; }
+
+  /* Pre-start message */
+  .before-start { padding: 32px 16px; text-align: center; color: var(--fg3); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .before-start-icon { font-size: 36px; }
+
+  /* Fases view */
+  .fase-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .fase-header { padding: 14px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border); }
+  .fase-name { font-weight: 700; font-size: 14px; }
+  .fase-dates { font-size: 11px; color: var(--fg3); }
+  .fase-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; letter-spacing: 0.04em; }
+  .fase-badge-active { background: var(--accent-dim); color: var(--accent); }
+  .fase-badge-done { background: var(--green-dim); color: var(--green); }
+  .fase-badge-future { background: var(--surface2); color: var(--fg3); }
+  .fase-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .fase-temas { display: flex; flex-direction: column; gap: 2px; }
+  .fase-tema-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 6px; border-radius: 6px; font-size: 12px;
+  }
+  .fase-tema-num {
+    font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+    background: var(--surface2); border-radius: 4px; padding: 1px 5px;
+    color: var(--fg2); flex-shrink: 0;
+  }
+  .fase-tema-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg2); }
+  .fase-tema-icon { flex-shrink: 0; font-size: 14px; }
+
+  /* Temas toggle */
+  .temas-toggle { display: flex; gap: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: var(--surface2); }
+  .temas-toggle-btn {
+    flex: 1; padding: 9px 10px; border: none; background: transparent; cursor: pointer;
+    font-size: 12px; font-weight: 600; color: var(--fg3);
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: background .15s, color .15s;
+  }
+  .temas-toggle-btn.active { background: var(--surface); color: var(--accent); }
+  .temas-toggle-btn:first-child { border-right: 1px solid var(--border); }
 
   /* Tests */
   .test-form { display: flex; flex-direction: column; gap: 10px; }
@@ -213,14 +318,6 @@
   .modal-title { font-size: 15px; font-weight: 700; }
   .modal-body { padding: 16px; }
 
-  /* Sync banner */
-  .sync-banner { background: var(--amber-dim); border: 1px solid var(--amber); border-radius: var(--radius); padding: 10px 14px; font-size: 12px; color: var(--fg); display: flex; align-items: center; gap: 8px; }
-  .sync-banner.synced { background: var(--green-dim); border-color: var(--green); }
-
-  /* Login screen */
-  .login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 32px 16px; text-align: center; min-height: 60vh; }
-  .login-logo { width: 56px; height: 56px; background: var(--accent); border-radius: 14px; display: grid; place-items: center; font-size: 24px; font-weight: 700; color: #fff; margin: 0 auto; }
-
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 </style>
 
@@ -238,23 +335,18 @@
     </div>
     <div class="header-actions">
       <button class="icon-btn" id="themeBtn" title="Cambiar tema">☀</button>
-      <button class="icon-btn" id="syncBtn" title="Sync" id="syncBtn">⟳</button>
+      <button class="icon-btn" id="syncBtn" title="Sync">⟳</button>
     </div>
   </div>
 
-  <!-- Nav -->
+  <!-- Nav (5 tabs) -->
   <nav class="nav">
     <button class="nav-btn active" data-view="resumen"><span class="nav-icon">📊</span>Resumen</button>
     <button class="nav-btn" data-view="semana"><span class="nav-icon">📅</span>Semana</button>
     <button class="nav-btn" data-view="temas"><span class="nav-icon">📚</span>Temas</button>
+    <button class="nav-btn" data-view="fases"><span class="nav-icon">🎯</span>Fases</button>
     <button class="nav-btn" data-view="tests"><span class="nav-icon">✏️</span>Tests</button>
   </nav>
-
-  <!-- Sync status banner -->
-  <div id="syncBanner" class="sync-banner" style="margin:8px 0 0;display:none">
-    <span id="syncBannerIcon">⚡</span>
-    <span id="syncBannerText">Conectando…</span>
-  </div>
 
   <!-- Main -->
   <main class="main" id="main">
@@ -277,7 +369,7 @@
             <div class="progress-bar"><div class="progress-fill" id="barEspecifica" style="width:0%"></div></div>
           </div>
           <div class="progress-wrap">
-            <div class="progress-label"><span>General (sesiones bus)</span><span id="pctGeneral">0 sesiones</span></div>
+            <div class="progress-label"><span>Parte general</span><span id="pctGeneral">0%</span></div>
             <div class="progress-bar"><div class="progress-fill green" id="barGeneral" style="width:0%"></div></div>
           </div>
         </div>
@@ -297,13 +389,8 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Últimos tests</span>
-          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="switchView('tests')">Ver todos</button>
+          <span class="card-title">Esta semana</span>
         </div>
-        <div id="lastTests"><div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Todavía no hay tests guardados</div></div></div>
-      </div>
-      <div class="card">
-        <div class="card-header"><span class="card-title">Esta semana</span></div>
         <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
           <div id="weekSessions"><div style="font-size:12px;color:var(--fg3)">Marca sesiones en la vista Semana</div></div>
           <div class="progress-wrap">
@@ -311,6 +398,13 @@
             <div class="progress-bar"><div class="progress-fill" id="weekBar" style="width:0%"></div></div>
           </div>
         </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Últimos tests</span>
+          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="switchView('tests')">Ver todos</button>
+        </div>
+        <div id="lastTests"><div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Todavía no hay tests guardados</div></div></div>
       </div>
     </div>
 
@@ -326,14 +420,26 @@
           <button class="icon-btn" id="nextWeek">→</button>
         </div>
       </div>
-      <div id="weekDays" style="display:flex;flex-direction:column;gap:8px"></div>
+      <!-- 7-day grid -->
+      <div class="day-grid" id="dayGrid"></div>
+      <!-- Detail for selected day -->
+      <div id="dayDetail"></div>
     </div>
 
     <!-- TEMAS -->
     <div class="view" id="view-temas">
-      <div class="card">
+      <!-- Toggle específica/general -->
+      <div class="temas-toggle">
+        <button class="temas-toggle-btn active" id="togEspecifica" onclick="switchTemasTab('especifica')">
+          📚 Específica <span id="badgeEsp" style="font-size:10px;background:var(--surface2);border-radius:99px;padding:1px 6px;margin-left:2px">58</span>
+        </button>
+        <button class="temas-toggle-btn" id="togGeneral" onclick="switchTemasTab('general')">
+          📖 General <span id="badgeGen" style="font-size:10px;background:var(--surface2);border-radius:99px;padding:1px 6px;margin-left:2px">26</span>
+        </button>
+      </div>
+      <div class="card" id="temasCard">
         <div class="card-header" style="flex-wrap:wrap;gap:8px">
-          <span class="card-title">58 temas · Parte específica</span>
+          <span class="card-title" id="temasCardTitle">58 temas · Parte específica</span>
           <div style="display:flex;gap:4px">
             <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterAll">Todos</button>
             <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterWeak">❌ Flojos</button>
@@ -341,6 +447,12 @@
         </div>
         <div id="temasList"></div>
       </div>
+    </div>
+
+    <!-- FASES -->
+    <div class="view" id="view-fases">
+      <div style="font-size:12px;color:var(--fg3);text-align:center;padding:4px 0 8px">Planning completo de 25 semanas</div>
+      <div id="fasesList"></div>
     </div>
 
     <!-- TESTS -->
@@ -362,9 +474,9 @@
             <div class="form-row">
               <label class="form-label">Puntuación</label>
               <div class="score-row">
-                <input class="form-input" type="number" id="testCorrect" placeholder="Aciertos" min="0" max="30">
+                <input class="form-input" type="number" id="testCorrect" placeholder="Aciertos" min="0" max="100">
                 <span style="color:var(--fg3);font-size:16px">/</span>
-                <input class="form-input" type="number" id="testTotal" placeholder="Total" min="1" max="30" value="10">
+                <input class="form-input" type="number" id="testTotal" placeholder="Total" min="1" max="100" value="10">
                 <div class="score-display" id="scoreDisplay">—</div>
               </div>
             </div>
@@ -416,13 +528,7 @@
 </div>
 
 <script>
-/* ─── SUPABASE CONFIG ──────────────────────────────────
-   Estas variables se rellenan desde las variables de entorno de Vercel.
-   En desarrollo local, crea un fichero .env con estas dos líneas:
-     SUPABASE_URL=https://xxxx.supabase.co
-     SUPABASE_ANON_KEY=eyJ...
-   En Vercel, se configuran como Environment Variables en el panel.
-─────────────────────────────────────────────────────── */
+/* ─── SUPABASE CONFIG ────────────────────────────────── */
 const SUPABASE_URL = window.__ENV?.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = window.__ENV?.SUPABASE_ANON_KEY || '';
 
@@ -431,7 +537,7 @@ let supabaseReady = false;
 
 function initSupabase() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    showSyncBanner('local', '⚡ Modo local — datos solo en este dispositivo');
+    setSyncBtn('err');
     return;
   }
   try {
@@ -439,22 +545,18 @@ function initSupabase() {
     supabaseReady = true;
     syncAll();
   } catch(e) {
-    showSyncBanner('local', '⚠ Error al conectar Supabase');
+    setSyncBtn('err');
   }
 }
 
-function showSyncBanner(type, text) {
-  const b = document.getElementById('syncBanner');
-  const t = document.getElementById('syncBannerText');
-  const i = document.getElementById('syncBannerIcon');
-  b.style.display = 'flex';
-  t.textContent = text;
-  if (type === 'synced') { b.className = 'sync-banner synced'; i.textContent = '✓'; }
-  else if (type === 'local') { b.className = 'sync-banner'; i.textContent = '⚡'; }
-  else { b.className = 'sync-banner'; i.textContent = '⚠'; }
+function setSyncBtn(state) {
+  const btn = document.getElementById('syncBtn');
+  btn.className = 'icon-btn' + (state === 'ok' ? ' sync-ok' : state === 'err' ? ' sync-err' : '');
+  btn.textContent = state === 'ok' ? '✓' : state === 'err' ? '⚠' : '⟳';
+  btn.title = state === 'ok' ? 'Sincronizado' : state === 'err' ? 'Sin sync (local)' : 'Sincronizando…';
 }
 
-/* ─── DATA ─────────────────────────────────────────── */
+/* ─── DATA — 58 TEMAS PARTE ESPECÍFICA ──────────────── */
 const TEMAS = [
   {t:1,nombre:"Legislación y normativa estadística",bloque:"Legislación estadística"},
   {t:2,nombre:"Secreto estadístico. Protección de datos",bloque:"Legislación estadística"},
@@ -516,11 +618,46 @@ const TEMAS = [
   {t:58,nombre:"Transferencia de datos. Interoperabilidad. ENS. ENI",bloque:"Agenda 2030 y nuevas tecnologías"},
 ];
 
+/* ─── DATA — 26 TEMAS PARTE GENERAL (IVAP) ──────────── */
+/* NOTA: T17 Aurrerabide excluido explícitamente */
+const TEMAS_GENERAL = [
+  {t:"G01",nombre:"La Constitución Española de 1978",bloque:"Derecho Constitucional"},
+  {t:"G02",nombre:"Derechos y libertades fundamentales. Su garantía y suspensión",bloque:"Derecho Constitucional"},
+  {t:"G03",nombre:"El Estatuto de Autonomía del País Vasco",bloque:"Derecho Autonómico"},
+  {t:"G04",nombre:"Las Instituciones del País Vasco. El Parlamento Vasco",bloque:"Derecho Autonómico"},
+  {t:"G05",nombre:"El Gobierno Vasco. La Administración de la CAPV",bloque:"Derecho Autonómico"},
+  {t:"G06",nombre:"Las Instituciones Forales. Las Juntas Generales",bloque:"Derecho Foral"},
+  {t:"G07",nombre:"Régimen local. El municipio. La Ley de Bases",bloque:"Derecho Administrativo"},
+  {t:"G08",nombre:"El procedimiento administrativo. La Ley 39/2015",bloque:"Derecho Administrativo"},
+  {t:"G09",nombre:"El acto administrativo. Nulidad e impugnación",bloque:"Derecho Administrativo"},
+  {t:"G10",nombre:"Los contratos del sector público. Ley 9/2017",bloque:"Derecho Administrativo"},
+  {t:"G11",nombre:"El empleo público. Estatuto Básico del Empleado Público",bloque:"Función Pública"},
+  {t:"G12",nombre:"La función pública vasca. Ley 6/1989",bloque:"Función Pública"},
+  {t:"G13",nombre:"Igualdad de mujeres y hombres. Ley 4/2005",bloque:"Igualdad"},
+  {t:"G14",nombre:"Igualdad de trato y no discriminación. Ley 15/2022",bloque:"Igualdad"},
+  {t:"G15",nombre:"Transparencia y buen gobierno. Ley 19/2013",bloque:"Buen Gobierno"},
+  {t:"G16",nombre:"Protección de datos personales. RGPD y LOPD-GDD",bloque:"Buen Gobierno"},
+  {t:"G18",nombre:"Presupuestos Generales del País Vasco",bloque:"Hacienda"},
+  {t:"G19",nombre:"El Concierto Económico. Cupo vasco",bloque:"Hacienda"},
+  {t:"G20",nombre:"Euskera: normalización lingüística. Ley de Normalización",bloque:"Euskera"},
+  {t:"G21",nombre:"Política lingüística en la Administración vasca",bloque:"Euskera"},
+  {t:"G22",nombre:"Riesgos laborales. Ley 31/1995 de PRL",bloque:"Prevención"},
+  {t:"G23",nombre:"La Unión Europea: instituciones y funcionamiento",bloque:"Unión Europea"},
+  {t:"G24",nombre:"El derecho de la UE. Fuentes y principios",bloque:"Unión Europea"},
+  {t:"G25",nombre:"Administración electrónica. Ley 40/2015",bloque:"Administración Digital"},
+  {t:"G26",nombre:"Seguridad de la información. ENS",bloque:"Administración Digital"},
+  {t:"G27",nombre:"Ofimática e informática básica",bloque:"Informática"},
+];
+
 const PHASES = [
-  {name:"Fase 1 · Bloques técnicos",start:"2026-10-19",end:"2026-12-28",totalWeeks:10},
-  {name:"Fase 2 · Bloques memorísticos",start:"2027-01-05",end:"2027-02-22",totalWeeks:7},
-  {name:"Fase 3 · Políticas sectoriales",start:"2027-02-23",end:"2027-03-15",totalWeeks:3},
-  {name:"Mes intensivo · Repaso",start:"2027-03-16",end:"2027-04-14",totalWeeks:4},
+  {name:"Fase 1 · Bloques técnicos",start:"2026-10-19",end:"2026-12-28",totalWeeks:10,
+   weekRange:[1,10],temas:[4,5,6,7,8,9,10,11,12,13,14,15,19,20,21,22,23,24,25,26,27,28,29]},
+  {name:"Fase 2 · Bloques memorísticos",start:"2027-01-05",end:"2027-02-22",totalWeeks:7,
+   weekRange:[11,17],temas:[1,2,3,16,17,18,30,31,32,33,34,35,36,37]},
+  {name:"Fase 3 · Políticas sectoriales",start:"2027-02-23",end:"2027-03-15",totalWeeks:3,
+   weekRange:[18,21],temas:[38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58]},
+  {name:"Mes intensivo · Repaso",start:"2027-03-16",end:"2027-04-14",totalWeeks:4,
+   weekRange:[22,25],temas:[]},
 ];
 
 const WEEK_PLAN = [
@@ -552,6 +689,7 @@ const WEEK_PLAN = [
 ];
 
 /* ─── STATE ─────────────────────────────────────────── */
+// topicStatus keys: numeric 1-58 for específica, "G01"-"G27" for general
 let state = { topicStatus:{}, sessions:{}, tests:[] };
 
 function loadLocal() {
@@ -564,43 +702,44 @@ function saveLocal() {
 /* ─── SUPABASE SYNC ─────────────────────────────────── */
 async function syncAll() {
   if (!supabaseReady) return;
-  showSyncBanner('local', '⟳ Sincronizando…');
+  setSyncBtn('spin');
   try {
-    // Load topic statuses
     const {data: statuses} = await db.from('topic_status').select('*');
     if (statuses) statuses.forEach(r => { state.topicStatus[r.topic_num] = r.status; });
 
-    // Load sessions
     const {data: sessions} = await db.from('sessions').select('*');
     if (sessions) sessions.forEach(r => { state.sessions[r.session_key] = r.status; });
 
-    // Load tests
     const {data: tests} = await db.from('tests').select('*').order('date', {ascending:false});
     if (tests) state.tests = tests;
 
     saveLocal();
-    showSyncBanner('synced', '✓ Sincronizado · ' + new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}));
+    setSyncBtn('ok');
     renderResumen();
     renderTemas();
     renderTests();
+    // Re-render week if visible
+    if (document.getElementById('view-semana').classList.contains('active')) renderWeek();
   } catch(e) {
-    showSyncBanner('error', '⚠ Error de sincronización');
+    setSyncBtn('err');
   }
 }
 
 async function saveTopicStatus(topicNum, status) {
-  if (!supabaseReady) { saveLocal(); return; }
+  saveLocal();
+  if (!supabaseReady) return;
   try {
     if (status) {
-      await db.from('topic_status').upsert({topic_num: topicNum, status, updated_at: new Date().toISOString()});
+      await db.from('topic_status').upsert({topic_num: String(topicNum), status, updated_at: new Date().toISOString()});
     } else {
-      await db.from('topic_status').delete().eq('topic_num', topicNum);
+      await db.from('topic_status').delete().eq('topic_num', String(topicNum));
     }
   } catch(e) { console.warn('Sync error:', e); }
 }
 
 async function saveSession(key, status) {
-  if (!supabaseReady) { saveLocal(); return; }
+  saveLocal();
+  if (!supabaseReady) return;
   try {
     if (status) {
       await db.from('sessions').upsert({session_key: key, status, updated_at: new Date().toISOString()});
@@ -614,11 +753,8 @@ async function saveTest(entry) {
   if (!supabaseReady) { saveLocal(); return entry; }
   try {
     const {data} = await db.from('tests').insert({
-      date: entry.date,
-      tema: entry.tema,
-      correct: entry.correct,
-      total: entry.total,
-      notes: entry.notes,
+      date: entry.date, tema: entry.tema, correct: entry.correct,
+      total: entry.total, notes: entry.notes,
     }).select().single();
     return data || entry;
   } catch(e) { console.warn('Sync error:', e); return entry; }
@@ -654,6 +790,7 @@ function switchView(id) {
   if (id === 'temas') renderTemas();
   if (id === 'tests') renderTests();
   if (id === 'resumen') renderResumen();
+  if (id === 'fases') renderFases();
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
 
@@ -661,6 +798,7 @@ document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', (
 function today() { return new Date().toISOString().split('T')[0]; }
 function parseDate(s) { return new Date(s+'T12:00:00'); }
 function fmtDate(s) { return parseDate(s).toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}); }
+function fmtDateShort(s) { return parseDate(s).toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
 function weekStart(d) {
   const dt = new Date(d+'T12:00:00');
   const day = dt.getDay();
@@ -677,148 +815,371 @@ function currentPhase() {
   for (let i=0;i<PHASES.length;i++) if(t>=PHASES[i].start&&t<=PHASES[i].end) return i;
   return t < PHASES[0].start ? 0 : PHASES.length-1;
 }
+function statusIcon(st) {
+  return st==='ok'?'✅':st==='review'?'🔄':st==='weak'?'❌':'⬜';
+}
 
 /* ─── WEEK VIEW ─────────────────────────────────────── */
+const WEEK_START_DATE = '2026-10-19';
 let viewingWeekStart = null;
+let selectedDayIndex = null; // 0=Mon … 6=Sun
+
+function getWeekSessions(dateStr, weekIdx) {
+  const plan = WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0];
+  const i = Math.round((parseDate(dateStr)-parseDate(viewingWeekStart))/(24*3600*1000));
+  const isSat = i===5, isSun = i===6;
+  const isOffice = (i===1||i===3||i===4); // Mar, Jue, Vie
+
+  const sessions = [];
+  if (isSun) {
+    sessions.push({type:'Descanso / Test libre',icon:'🛏',key:`${dateStr}:domingo`,topics:[],isRest:true});
+  } else if (isSat) {
+    sessions.push({
+      type:'Específica intensiva',icon:'📚',key:`${dateStr}:especifica`,
+      topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
+    });
+  } else {
+    sessions.push({
+      type:'Específica',icon:'📚',key:`${dateStr}:especifica`,
+      topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
+    });
+    if (isOffice) {
+      sessions.push({type:'General · Bus',icon:'📖',key:`${dateStr}:general`,topics:[],isGeneral:true});
+    }
+  }
+  return sessions;
+}
 
 function renderWeek() {
-  if (!viewingWeekStart) viewingWeekStart = weekStart(today()) < '2026-10-19' ? '2026-10-19' : weekStart(today());
-  const ws = viewingWeekStart;
-  const we = addDays(ws, 6);
-  const startAbs = parseDate('2026-10-19'); // Semana 1 empieza el lunes 19 oct
-  const weekIdx = Math.max(1, Math.min(Math.floor((parseDate(ws)-startAbs)/(7*24*3600*1000))+1, 25));
-  const plan = WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0];
-
-  const wsLabel = parseDate(ws).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
-  const weLabel = parseDate(we).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
-  document.getElementById('weekTitle').textContent = `Semana ${weekIdx} del planning`;
-  document.getElementById('weekRange').textContent = `${wsLabel} – ${weLabel}`;
-
-  const DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  const container = document.getElementById('weekDays');
-  container.innerHTML = '';
-
-  for (let i=0;i<7;i++) {
-    const dateStr = addDays(ws, i);
-    const isToday = dateStr === today();
-    const isSat = i === 5, isSun = i === 6;
-    const isOffice = (i===1||i===3||i===4);
-
-    const sessions = [];
-    if (!isSun) {
-      sessions.push({
-        type: isSat ? 'específica intensiva' : 'específica',
-        icon: isSat ? '🔥' : '📚',
-        topic: plan.bloque,
-        key: `${dateStr}:especifica`,
-      });
-    }
-    if (isOffice) {
-      sessions.push({type:'general · bus',icon:'🚌',topic:'NotebookLM podcast + test',key:`${dateStr}:general`});
-    }
-    if (isSun) {
-      sessions.push({type:'test / repaso o descanso',icon:'✏️',topic:'Tests tipo examen',key:`${dateStr}:domingo`});
-    }
-
-    const card = document.createElement('div');
-    card.className = 'day-card';
-    if (isToday) card.style.border = '2px solid var(--accent)';
-
-    card.innerHTML = `<div class="day-header">
-      <div class="day-name">${DAY_NAMES[i]}${isToday?' · Hoy':''}</div>
-      <div class="day-date">${parseDate(dateStr).toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</div>
-    </div>` + sessions.map(s => {
-      const st = state.sessions[s.key];
-      const btnClass = st==='done'?'done':st==='skipped'?'skipped':'';
-      const btnChar = st==='done'?'✓':st==='skipped'?'~':'';
-      return `<div class="day-session">
-        <div class="session-icon">${s.icon}</div>
-        <div class="session-info">
-          <div class="session-type">${s.type}</div>
-          <div class="session-topic">${s.topic}</div>
-        </div>
-        <button class="check-btn ${btnClass}" data-key="${s.key}">${btnChar}</button>
-      </div>`;
-    }).join('');
-
-    container.appendChild(card);
+  if (!viewingWeekStart) {
+    const ws = weekStart(today());
+    viewingWeekStart = ws < WEEK_START_DATE ? WEEK_START_DATE : ws;
   }
 
+  const ws = viewingWeekStart;
+  const we = addDays(ws, 6);
+  const startAbs = parseDate(WEEK_START_DATE);
+  const diff = Math.floor((parseDate(ws) - startAbs)/(7*24*3600*1000));
+
+  // Block navigation before start
+  const isBeforeStart = ws < WEEK_START_DATE;
+  document.getElementById('prevWeek').disabled = (ws <= WEEK_START_DATE);
+  document.getElementById('prevWeek').style.opacity = (ws <= WEEK_START_DATE) ? '0.35' : '';
+
+  if (isBeforeStart) {
+    document.getElementById('weekTitle').textContent = 'Antes del inicio';
+    document.getElementById('weekRange').textContent = 'El planning empieza el 19 oct';
+    document.getElementById('dayGrid').innerHTML = '';
+    document.getElementById('dayDetail').innerHTML = `<div class="before-start"><div class="before-start-icon">📅</div><div style="font-size:14px;font-weight:600">El planning empieza el 19 de octubre</div><div style="font-size:12px">Navega hacia delante para ver la primera semana</div></div>`;
+    return;
+  }
+
+  const weekIdx = Math.max(1, Math.min(diff+1, 25));
+  const plan = WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0];
+
+  document.getElementById('weekTitle').textContent = `Semana ${weekIdx} · ${plan.bloque}`;
+  document.getElementById('weekRange').textContent = `${fmtDateShort(ws)} – ${fmtDateShort(we)}`;
+
+  const DAY_NAMES = ['L','M','X','J','V','S','D'];
+  const todayStr = today();
+
+  // If no day selected, default to today if in this week, else Monday
+  if (selectedDayIndex === null) {
+    if (todayStr >= ws && todayStr <= we) {
+      const d = parseDate(todayStr).getDay();
+      selectedDayIndex = d === 0 ? 6 : d-1;
+    } else {
+      selectedDayIndex = 0;
+    }
+  }
+
+  // Build 7-day grid
+  const grid = document.getElementById('dayGrid');
+  grid.innerHTML = '';
+  for (let i=0;i<7;i++) {
+    const dateStr = addDays(ws, i);
+    const isToday = dateStr === todayStr;
+    const sessions = getWeekSessions(dateStr, weekIdx);
+    // Icons for this day
+    const icons = sessions.map(s=>s.icon).join('');
+
+    const cell = document.createElement('div');
+    cell.className = 'day-cell' + (i===selectedDayIndex?' selected':'') + (isToday?' is-today':'');
+    cell.innerHTML = `<div class="day-cell-name">${DAY_NAMES[i]}</div>
+      <div class="day-cell-date">${parseDate(dateStr).getDate()}</div>
+      <div class="day-cell-icons">${icons}</div>`;
+    cell.addEventListener('click', () => {
+      selectedDayIndex = i;
+      renderWeek();
+    });
+    grid.appendChild(cell);
+  }
+
+  // Detail panel for selected day
+  renderDayDetail(ws, weekIdx);
+
+  document.getElementById('prevWeek').onclick = () => {
+    if (ws <= WEEK_START_DATE) return;
+    viewingWeekStart = addDays(viewingWeekStart,-7);
+    selectedDayIndex = null;
+    renderWeek();
+  };
+  document.getElementById('nextWeek').onclick = () => {
+    viewingWeekStart = addDays(viewingWeekStart,7);
+    selectedDayIndex = null;
+    renderWeek();
+  };
+}
+
+function renderDayDetail(ws, weekIdx) {
+  const i = selectedDayIndex ?? 0;
+  const dateStr = addDays(ws, i);
+  const DAY_NAMES_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const todayStr = today();
+  const isToday = dateStr === todayStr;
+  const isPast = dateStr < todayStr;
+
+  const sessions = getWeekSessions(dateStr, weekIdx);
+  const container = document.getElementById('dayDetail');
+
+  let html = `<div class="day-detail-card">
+    <div class="day-detail-header">
+      <div class="day-detail-title">${DAY_NAMES_FULL[i]}${isToday?' · Hoy':''}</div>
+      <div class="day-detail-sub">${fmtDateShort(dateStr)}</div>
+    </div>`;
+
+  if (sessions.length === 0) {
+    html += `<div class="rest-row">🛏 Descanso</div>`;
+  } else {
+    for (const s of sessions) {
+      const done = state.sessions[s.key] === 'done';
+      if (s.isRest) {
+        // Sunday: just a check for test/descanso
+        html += `<div class="session-row">
+          <div class="session-row-icon">${s.icon}</div>
+          <div class="session-row-info">
+            <div class="session-row-type">${s.type}</div>
+          </div>
+          <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
+        </div>`;
+      } else if (s.isGeneral) {
+        html += `<div class="session-row">
+          <div class="session-row-icon">${s.icon}</div>
+          <div class="session-row-info">
+            <div class="session-row-type">${s.type}</div>
+            <div class="session-row-topics"><div class="session-topic-line"><span class="session-topic-name" style="color:var(--fg2)">NotebookLM podcast + test</span></div></div>
+          </div>
+          <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
+        </div>`;
+      } else {
+        // Específica: list individual topics
+        const topicsHtml = s.topics.length > 0 ? s.topics.map(tema => {
+          const st = state.topicStatus[tema.t];
+          const icon = statusIcon(st);
+          return `<div class="session-topic-line">
+            <span class="session-topic-num">T${String(tema.t).padStart(2,'0')}</span>
+            <span class="session-topic-name">${tema.nombre}</span>
+            <span class="session-topic-status">${icon}</span>
+          </div>`;
+        }).join('') : `<div style="font-size:12px;color:var(--fg3)">Repaso libre</div>`;
+
+        html += `<div class="session-row">
+          <div class="session-row-icon">${s.icon}</div>
+          <div class="session-row-info">
+            <div class="session-row-type">${s.type}</div>
+            <div class="session-row-topics">${topicsHtml}</div>
+          </div>
+          <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
+        </div>`;
+      }
+    }
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Wire check buttons — simple toggle done/not-done
   container.querySelectorAll('.check-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
       const key = this.dataset.key;
       const cur = state.sessions[key];
-      const next = !cur ? 'done' : cur==='done' ? 'skipped' : null;
+      const next = cur === 'done' ? null : 'done';
       if (next) state.sessions[key] = next;
       else delete state.sessions[key];
-      saveLocal();
       await saveSession(key, next);
-      renderWeek();
+      renderDayDetail(ws, weekIdx);
       renderResumen();
     });
   });
-
-  document.getElementById('prevWeek').onclick = () => { viewingWeekStart = addDays(viewingWeekStart,-7); renderWeek(); };
-  document.getElementById('nextWeek').onclick = () => { viewingWeekStart = addDays(viewingWeekStart,7); renderWeek(); };
 }
 
 /* ─── TEMAS ─────────────────────────────────────────── */
 let temasFilter = 'all';
+let temasTab = 'especifica'; // 'especifica' | 'general'
 let selectedTopic = null;
+let selectedTopicIsGeneral = false;
+
+function switchTemasTab(tab) {
+  temasTab = tab;
+  document.getElementById('togEspecifica').className = 'temas-toggle-btn' + (tab==='especifica'?' active':'');
+  document.getElementById('togGeneral').className = 'temas-toggle-btn' + (tab==='general'?' active':'');
+  renderTemas();
+}
 
 function renderTemas() {
   const list = document.getElementById('temasList');
-  const items = temasFilter === 'weak' ? TEMAS.filter(t => !state.topicStatus[t.t] || state.topicStatus[t.t]==='weak') : TEMAS;
-  if (!items.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">¡No hay temas flojos!</div></div>'; return; }
+  const isGeneral = temasTab === 'general';
+  const allTemas = isGeneral ? TEMAS_GENERAL : TEMAS;
+  const totalCount = allTemas.length;
+
+  document.getElementById('temasCardTitle').textContent =
+    `${totalCount} temas · Parte ${isGeneral?'general':'específica'}`;
+
+  // Update badges with current counts
+  const espDone = TEMAS.filter(t => state.topicStatus[t.t]).length;
+  const genDone = TEMAS_GENERAL.filter(t => state.topicStatus[t.t]).length;
+  document.getElementById('badgeEsp').textContent = `${espDone}/58`;
+  document.getElementById('badgeGen').textContent = `${genDone}/26`;
+
+  const items = temasFilter === 'weak'
+    ? allTemas.filter(t => !state.topicStatus[t.t] || state.topicStatus[t.t]==='weak')
+    : allTemas;
+
+  if (!items.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🎉</div><div class="empty-text">¡No hay temas flojos!</div></div>';
+    return;
+  }
+
   let lastBloque = null;
   list.innerHTML = items.map(tema => {
     const st = state.topicStatus[tema.t];
-    const icon = st==='ok'?'✅':st==='review'?'🔄':st==='weak'?'❌':'⬜';
+    const icon = statusIcon(st);
     let hdr = '';
-    if (tema.bloque !== lastBloque) { lastBloque = tema.bloque; hdr = `<div style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--border)">${tema.bloque}</div>`; }
-    return `${hdr}<div class="topic-item" data-t="${tema.t}">
-      <div class="topic-num">${String(tema.t).padStart(2,'0')}</div>
+    if (tema.bloque !== lastBloque) {
+      lastBloque = tema.bloque;
+      hdr = `<div style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--border)">${tema.bloque}</div>`;
+    }
+    const numDisplay = isGeneral ? tema.t : String(tema.t).padStart(2,'0');
+    return `${hdr}<div class="topic-item" data-t="${tema.t}" data-gen="${isGeneral}">
+      <div class="topic-num">${numDisplay}</div>
       <div class="topic-info"><div class="topic-name">${tema.nombre}</div></div>
-      <button class="status-btn" data-t="${tema.t}">${icon}</button>
+      <button class="status-btn" data-t="${tema.t}" data-gen="${isGeneral}">${icon}</button>
     </div>`;
   }).join('');
+
   list.querySelectorAll('.status-btn').forEach(btn => {
-    btn.addEventListener('click', e => { e.stopPropagation(); openTopicModal(parseInt(btn.dataset.t)); });
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openTopicModal(btn.dataset.t, btn.dataset.gen === 'true');
+    });
   });
 }
 
 document.getElementById('filterAll').addEventListener('click', () => { temasFilter='all'; renderTemas(); });
 document.getElementById('filterWeak').addEventListener('click', () => { temasFilter='weak'; renderTemas(); });
 
-function openTopicModal(t) {
-  selectedTopic = t;
-  const tema = TEMAS.find(x=>x.t===t);
-  document.getElementById('topicModalTitle').textContent = `T${String(t).padStart(2,'0')} · Estado`;
+function openTopicModal(t, isGeneral) {
+  selectedTopic = isGeneral ? t : parseInt(t);
+  selectedTopicIsGeneral = isGeneral;
+  const allTemas = isGeneral ? TEMAS_GENERAL : TEMAS;
+  const tema = allTemas.find(x=>x.t==t);
+  const numDisplay = isGeneral ? t : `T${String(t).padStart(2,'0')}`;
+  document.getElementById('topicModalTitle').textContent = `${numDisplay} · Estado`;
   document.getElementById('topicModalName').textContent = tema?.nombre || '';
   document.getElementById('topicModal').style.display = 'flex';
 }
-function closeTopicModal(e) { if(!e||e.target===document.getElementById('topicModal')) document.getElementById('topicModal').style.display='none'; }
+function closeTopicModal(e) {
+  if(!e||e.target===document.getElementById('topicModal'))
+    document.getElementById('topicModal').style.display='none';
+}
 async function setTopicStatus(status) {
   if (selectedTopic !== null) {
     if (status) state.topicStatus[selectedTopic] = status;
     else delete state.topicStatus[selectedTopic];
-    saveLocal();
     await saveTopicStatus(selectedTopic, status);
-    renderTemas(); renderResumen();
+    renderTemas();
+    renderResumen();
+    if (document.getElementById('view-fases').classList.contains('active')) renderFases();
   }
   document.getElementById('topicModal').style.display = 'none';
   selectedTopic = null;
 }
 
+/* ─── FASES ─────────────────────────────────────────── */
+function renderFases() {
+  const container = document.getElementById('fasesList');
+  const todayStr = today();
+  let html = '';
+  for (let i=0; i<PHASES.length; i++) {
+    const ph = PHASES[i];
+    const isActive = todayStr >= ph.start && todayStr <= ph.end;
+    const isDone = todayStr > ph.end;
+    const isFuture = todayStr < ph.start;
+
+    // Progress
+    const phStart = parseDate(ph.start), phEnd = parseDate(ph.end), now = new Date();
+    const prog = Math.max(0, Math.min(1, (now-phStart)/(phEnd-phStart)));
+    const phW = isDone ? ph.totalWeeks : Math.ceil(prog*ph.totalWeeks);
+
+    // Topic status for this phase
+    const temasEnFase = ph.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean);
+    const temasHtml = temasEnFase.length > 0 ? temasEnFase.map(tema => {
+      const st = state.topicStatus[tema.t];
+      const icon = statusIcon(st);
+      return `<div class="fase-tema-item">
+        <span class="fase-tema-num">T${String(tema.t).padStart(2,'0')}</span>
+        <span class="fase-tema-name">${tema.nombre}</span>
+        <span class="fase-tema-icon">${icon}</span>
+      </div>`;
+    }).join('') : `<div style="font-size:12px;color:var(--fg3);padding:8px 0">Semanas de repaso y simulacros</div>`;
+
+    const badgeCls = isDone ? 'fase-badge-done' : isActive ? 'fase-badge-active' : 'fase-badge-future';
+    const badgeTxt = isDone ? '✅ Completada' : isActive ? '▶ En curso' : '⏳ Pendiente';
+
+    html += `<div class="fase-card" style="margin-bottom:12px">
+      <div class="fase-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div class="fase-name">Fase ${i+1} · ${ph.name.split('·')[1]?.trim()||ph.name}</div>
+          <span class="fase-badge ${badgeCls}">${badgeTxt}</span>
+        </div>
+        <div class="fase-dates">${fmtDateShort(ph.start)} – ${fmtDateShort(ph.end)} · Semanas ${ph.weekRange[0]}–${ph.weekRange[1]}</div>
+        <div class="progress-wrap" style="margin-top:6px">
+          <div class="progress-label"><span>Semanas</span><span>${phW}/${ph.totalWeeks}</span></div>
+          <div class="progress-bar"><div class="progress-fill${isActive?' ':' green'}" style="width:${isDone?100:Math.round(prog*100)}%"></div></div>
+        </div>
+      </div>
+      <div class="fase-body">
+        ${ph.temas.length > 0 ? `<div style="font-size:10px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${ph.temas.length} temas</div>` : ''}
+        <div class="fase-temas">${temasHtml}</div>
+      </div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
 /* ─── TESTS ─────────────────────────────────────────── */
 function populateTemasSelect() {
   const sel = document.getElementById('testTema');
+  // Específica
+  const grpEsp = document.createElement('optgroup');
+  grpEsp.label = '📚 Parte específica';
   TEMAS.forEach(t => {
     const o = document.createElement('option');
-    o.value = t.t;
+    o.value = 'E:'+t.t;
     o.textContent = `T${String(t.t).padStart(2,'0')} — ${t.nombre}`;
-    sel.appendChild(o);
+    grpEsp.appendChild(o);
   });
+  sel.appendChild(grpEsp);
+  // General
+  const grpGen = document.createElement('optgroup');
+  grpGen.label = '📖 Parte general';
+  TEMAS_GENERAL.forEach(t => {
+    const o = document.createElement('option');
+    o.value = 'G:'+t.t;
+    o.textContent = `${t.t} — ${t.nombre}`;
+    grpGen.appendChild(o);
+  });
+  sel.appendChild(grpGen);
 }
 
 function updateScoreDisplay() {
@@ -837,16 +1198,18 @@ document.getElementById('testDate').value = today();
 
 document.getElementById('saveTestBtn').addEventListener('click', async () => {
   const date = document.getElementById('testDate').value;
-  const tema = document.getElementById('testTema').value;
+  const temaVal = document.getElementById('testTema').value;
   const correct = parseInt(document.getElementById('testCorrect').value);
   const total = parseInt(document.getElementById('testTotal').value);
   const notes = document.getElementById('testNotes').value.trim();
-  if (!date||!tema||isNaN(correct)||isNaN(total)) {
+  if (!date||!temaVal||isNaN(correct)||isNaN(total)) {
     const btn = document.getElementById('saveTestBtn');
     btn.textContent='⚠ Completa los campos';
     setTimeout(()=>btn.textContent='Guardar test',2000); return;
   }
-  const entry = {id:Date.now(),date,tema:parseInt(tema),correct,total,notes};
+  // temaVal is "E:4" or "G:G01"
+  const [part, temaId] = temaVal.split(':');
+  const entry = {id:Date.now(),date,tema:temaId,parte:part,correct,total,notes};
   const saved = await saveTest(entry);
   state.tests.unshift(saved||entry);
   saveLocal();
@@ -862,36 +1225,50 @@ document.getElementById('saveTestBtn').addEventListener('click', async () => {
   setTimeout(()=>btn.textContent='Guardar test',1500);
 });
 
+function temaLabel(e) {
+  if (e.parte === 'G') {
+    const t = TEMAS_GENERAL.find(x=>x.t===e.tema);
+    return `${e.tema} — ${t?.nombre?.substring(0,40)||e.tema}`;
+  } else {
+    const num = parseInt(e.tema);
+    const t = TEMAS.find(x=>x.t===num);
+    return `T${String(num).padStart(2,'0')} — ${t?.nombre?.substring(0,40)||'Tema '+num}`;
+  }
+}
+
 function renderTests() {
   const container = document.getElementById('testsList');
   document.getElementById('testListTitle').textContent=`Historial de tests (${state.tests.length})`;
-  if (!state.tests.length) { container.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Guarda tu primer test arriba</div></div>'; return; }
+  if (!state.tests.length) {
+    container.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Guarda tu primer test arriba</div></div>';
+    return;
+  }
   container.innerHTML = state.tests.slice(0,50).map(e => {
-    const tema = TEMAS.find(t=>t.t===e.tema);
     const pct = Math.round(e.correct/e.total*100);
     const sc = pct>=70?'score-good':pct>=50?'score-mid':'score-low';
     const wr = e.notes?`<div class="test-wrong">Notas: ${e.notes.substring(0,60)}${e.notes.length>60?'…':''}</div>`:'';
     return `<div class="test-entry" data-id="${e.id}">
       <div class="test-score-box ${sc}">${pct}%</div>
       <div class="test-details">
-        <div class="test-title">T${String(e.tema).padStart(2,'0')} — ${tema?.nombre?.substring(0,40)||'Tema '+e.tema}</div>
+        <div class="test-title">${temaLabel(e)}</div>
         <div class="test-meta">${fmtDate(e.date)} · ${e.correct}/${e.total} aciertos</div>${wr}
       </div>
     </div>`;
   }).join('');
-  container.querySelectorAll('.test-entry').forEach(el => el.addEventListener('click',()=>openTestModal(parseInt(el.dataset.id))));
+  container.querySelectorAll('.test-entry').forEach(el =>
+    el.addEventListener('click',()=>openTestModal(parseInt(el.dataset.id)))
+  );
 }
 
 function openTestModal(id) {
   const e = state.tests.find(t=>t.id===id); if(!e) return;
-  const tema = TEMAS.find(t=>t.t===e.tema);
   const pct = Math.round(e.correct/e.total*100);
   const sc = pct>=70?'score-good':pct>=50?'score-mid':'score-low';
-  document.getElementById('modalTitle').textContent=`T${String(e.tema).padStart(2,'0')} — Test`;
+  document.getElementById('modalTitle').textContent='Detalle test';
   document.getElementById('modalBody').innerHTML=`
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
       <div class="test-score-box ${sc}" style="width:56px;height:56px;font-size:18px;border-radius:12px">${pct}%</div>
-      <div><div style="font-size:14px;font-weight:600">${tema?.nombre||'Tema '+e.tema}</div>
+      <div><div style="font-size:14px;font-weight:600">${temaLabel(e)}</div>
       <div style="font-size:12px;color:var(--fg2);margin-top:3px">${fmtDate(e.date)} · ${e.correct}/${e.total} aciertos</div></div>
     </div>
     ${e.notes?`<div style="background:var(--red-dim);border-radius:8px;padding:12px;font-size:13px">
@@ -908,32 +1285,43 @@ async function deleteTest(id) {
   await deleteTestDB(id);
   closeModal(); renderTests(); renderResumen();
 }
-function closeModal(e) { if(!e||e.target===document.getElementById('testModal')) document.getElementById('testModal').style.display='none'; }
+function closeModal(e) {
+  if(!e||e.target===document.getElementById('testModal'))
+    document.getElementById('testModal').style.display='none';
+}
 
 /* ─── RESUMEN ───────────────────────────────────────── */
 function renderResumen() {
-  const controlados = Object.values(state.topicStatus).filter(v=>v==='ok').length;
-  const repaso = Object.values(state.topicStatus).filter(v=>v==='review').length;
-  const flojos = Object.values(state.topicStatus).filter(v=>v==='weak').length;
-  const done = controlados+repaso+flojos;
+  // Específica stats
+  const controlados = Object.entries(state.topicStatus).filter(([k,v])=>!isNaN(k)&&v==='ok').length;
+  const repaso = Object.entries(state.topicStatus).filter(([k,v])=>!isNaN(k)&&v==='review').length;
+  const flojos = Object.entries(state.topicStatus).filter(([k,v])=>!isNaN(k)&&v==='weak').length;
+  const doneEsp = controlados+repaso+flojos;
+
   document.getElementById('statControlados').textContent=controlados;
   document.getElementById('statRepaso').textContent=repaso;
   document.getElementById('statFlojos').textContent=flojos;
-  document.getElementById('barEspecifica').style.width=Math.round(done/58*100)+'%';
-  document.getElementById('pctEspecifica').textContent=Math.round(done/58*100)+'%';
-  const busOk = Object.keys(state.sessions).filter(k=>k.includes(':general')&&state.sessions[k]==='done').length;
-  document.getElementById('barGeneral').style.width=Math.min(100,Math.round(busOk/75*100))+'%';
-  document.getElementById('pctGeneral').textContent=busOk+' sesiones';
+  document.getElementById('barEspecifica').style.width=Math.round(doneEsp/58*100)+'%';
+  document.getElementById('pctEspecifica').textContent=Math.round(doneEsp/58*100)+'%';
+
+  // General progress
+  const doneGen = TEMAS_GENERAL.filter(t => state.topicStatus[t.t]).length;
+  document.getElementById('barGeneral').style.width=Math.round(doneGen/26*100)+'%';
+  document.getElementById('pctGeneral').textContent=Math.round(doneGen/26*100)+'%';
+
+  // Phase
   const phIdx = currentPhase();
   const ph = PHASES[phIdx];
   document.getElementById('currentPhaseLabel').textContent=`Fase ${phIdx+1}`;
   document.getElementById('phaseName').textContent=ph.name;
-  document.getElementById('phaseDates').textContent=`${fmtDate(ph.start)} – ${fmtDate(ph.end)}`;
+  document.getElementById('phaseDates').textContent=`${fmtDateShort(ph.start)} – ${fmtDateShort(ph.end)}`;
   const phStart=parseDate(ph.start),phEnd=parseDate(ph.end),now=new Date();
   const prog=Math.max(0,Math.min(1,(now-phStart)/(phEnd-phStart)));
   const phW=Math.ceil(prog*ph.totalWeeks);
   document.getElementById('phaseWeekProgress').textContent=`${phW}/${ph.totalWeeks}`;
   document.getElementById('phaseBar').style.width=Math.round(prog*100)+'%';
+
+  // This week sessions
   const ws=weekStart(today());
   const thisWeekKeys=Object.keys(state.sessions).filter(k=>{const d=k.split(':')[0];return d>=ws&&d<=addDays(ws,6);});
   const thisWeekDone=thisWeekKeys.filter(k=>state.sessions[k]==='done').length;
@@ -948,34 +1336,37 @@ function renderResumen() {
     return `<div style="display:flex;gap:8px;font-size:12px;padding:3px 0"><span>${s==='done'?'✅':'⏭'}</span><span style="color:var(--fg2)">${dayName}</span><span>${type}</span></div>`;
   });
   document.getElementById('weekSessions').innerHTML=sessionLines.length?sessionLines.join(''):'<div style="font-size:12px;color:var(--fg3)">Marca sesiones en la vista Semana</div>';
+
+  // Last tests
   const lastTestsEl=document.getElementById('lastTests');
   if (!state.tests.length) { lastTestsEl.innerHTML='<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Todavía no hay tests guardados</div></div>'; return; }
   lastTestsEl.innerHTML=state.tests.slice(0,3).map(e=>{
-    const tema=TEMAS.find(t=>t.t===e.tema);
     const pct=Math.round(e.correct/e.total*100);
     const sc=pct>=70?'score-good':pct>=50?'score-mid':'score-low';
-    return `<div class="test-entry"><div class="test-score-box ${sc}">${pct}%</div><div class="test-details"><div class="test-title">T${String(e.tema).padStart(2,'0')} — ${tema?.nombre?.substring(0,35)||''}</div><div class="test-meta">${fmtDate(e.date)} · ${e.correct}/${e.total}</div></div></div>`;
+    return `<div class="test-entry"><div class="test-score-box ${sc}">${pct}%</div><div class="test-details"><div class="test-title">${temaLabel(e)}</div><div class="test-meta">${fmtDate(e.date)} · ${e.correct}/${e.total}</div></div></div>`;
   }).join('');
 }
 
 /* ─── SYNC BTN ───────────────────────────────────────── */
-document.getElementById('syncBtn').addEventListener('click', () => { if(supabaseReady) syncAll(); else showSyncInfo(); });
-function showSyncInfo() {
-  document.getElementById('modalTitle').textContent='Sincronización';
-  document.getElementById('modalBody').innerHTML=`<div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
-    <div style="background:var(--amber-dim);border-radius:8px;padding:12px">
-      <div style="font-weight:600;color:var(--amber);margin-bottom:4px">⚡ Modo local activo</div>
-      Los datos se guardan solo en este dispositivo. Cuando tengas Supabase configurado se activará la sincronización automática.
-    </div>
-    <div style="background:var(--surface2);border-radius:8px;padding:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Datos guardados</div>
-      <div>Tests: <strong>${state.tests.length}</strong></div>
-      <div>Temas marcados: <strong>${Object.keys(state.topicStatus).length}</strong></div>
-      <div>Sesiones: <strong>${Object.keys(state.sessions).length}</strong></div>
-    </div>
-  </div>`;
-  document.getElementById('testModal').style.display='flex';
-}
+document.getElementById('syncBtn').addEventListener('click', () => {
+  if (supabaseReady) syncAll();
+  else {
+    document.getElementById('modalTitle').textContent='Sincronización';
+    document.getElementById('modalBody').innerHTML=`<div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+      <div style="background:var(--amber-dim);border-radius:8px;padding:12px">
+        <div style="font-weight:600;color:var(--amber);margin-bottom:4px">⚡ Modo local activo</div>
+        Los datos se guardan solo en este dispositivo.
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Datos guardados</div>
+        <div>Tests: <strong>${state.tests.length}</strong></div>
+        <div>Temas marcados: <strong>${Object.keys(state.topicStatus).length}</strong></div>
+        <div>Sesiones: <strong>${Object.keys(state.sessions).length}</strong></div>
+      </div>
+    </div>`;
+    document.getElementById('testModal').style.display='flex';
+  }
+});
 
 /* ─── INIT ───────────────────────────────────────────── */
 loadLocal();
