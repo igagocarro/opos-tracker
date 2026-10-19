@@ -3,6 +3,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#141311">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 
 <style>
@@ -1370,6 +1373,11 @@ document.getElementById('syncBtn').addEventListener('click', () => {
     document.getElementById('testModal').style.display='flex';
   }
 });
+
+/* ─── SERVICE WORKER ─────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
 
 /* ─── INIT ───────────────────────────────────────────── */
 loadLocal();
