@@ -836,10 +836,10 @@ async function saveSession(key, status) {
 async function saveTest(entry) {
   if (!supabaseReady) return entry;
   try {
-    const payload = {date: entry.date, tema: entry.tema, parte: entry.parte||'E',
-      correct: entry.correct, total: entry.total, notes: entry.notes};
-    console.log('[saveTest] payload:', JSON.stringify(payload));
-    const {data} = await db.from('tests').insert(payload).select().single();
+    const {data} = await db.from('tests').insert({
+      date: entry.date, tema: entry.tema,
+      correct: entry.correct, total: entry.total, notes: entry.notes,
+    }).select().single();
     return data || entry;
   } catch(e) { console.warn('Sync error:', e); return entry; }
 }
@@ -1289,23 +1289,22 @@ function renderFases() {
 /* ─── TESTS ─────────────────────────────────────────── */
 function populateTemasSelect() {
   const sel = document.getElementById('testTema');
-  // Específica
+  // Específica — value: "E04", "E27", etc.
   const grpEsp = document.createElement('optgroup');
   grpEsp.label = '📚 Parte específica';
   TEMAS.forEach(t => {
     const o = document.createElement('option');
-    o.value = 'E:'+t.t;
-    o.textContent = `T${String(t.t).padStart(2,'0')} — ${t.nombre}`;
+    o.value = 'E'+String(t.t).padStart(2,'0');
+    o.textContent = `E${String(t.t).padStart(2,'0')} — ${t.nombre}`;
     grpEsp.appendChild(o);
   });
   sel.appendChild(grpEsp);
-  // General
+  // General — value: "G09", "G03", etc.
   const grpGen = document.createElement('optgroup');
   grpGen.label = '📖 Parte general';
   TEMAS_GENERAL.forEach(t => {
     const o = document.createElement('option');
-    // value: "G:3" — parte:número puro
-    o.value = 'G:'+t.t.replace('G','');
+    o.value = t.t; // ya es "G09" etc.
     o.textContent = `${t.t} — ${t.nombre}`;
     grpGen.appendChild(o);
   });
@@ -1337,9 +1336,8 @@ document.getElementById('saveTestBtn').addEventListener('click', async () => {
     btn.textContent='⚠ Completa los campos';
     setTimeout(()=>btn.textContent='Guardar test',2000); return;
   }
-  // temaVal is "E:4" or "G:3" — parte siempre E/G, tema siempre número puro
-  const [part, temaId] = temaVal.split(':');
-  const entry = {id:Date.now(),date,tema:temaId,parte:part,correct,total,notes};
+  // temaVal es "E04" o "G09" directamente — un solo campo
+  const entry = {id:Date.now(),date,tema:temaVal,correct,total,notes};
   const saved = await saveTest(entry);
   state.tests.unshift(saved||entry);
   document.getElementById('testTema').value='';
@@ -1355,15 +1353,14 @@ document.getElementById('saveTestBtn').addEventListener('click', async () => {
 });
 
 function temaLabel(e) {
-  if (e.parte === 'G') {
-    // tema es número puro, ej: "3" → buscar "G03"
-    const tKey = 'G'+String(e.tema).padStart(2,'0');
-    const t = TEMAS_GENERAL.find(x=>x.t===tKey);
-    return `${tKey} — ${t?.nombre?.substring(0,40)||tKey}`;
+  // tema es "E04" o "G09"
+  if (e.tema && e.tema.startsWith('G')) {
+    const t = TEMAS_GENERAL.find(x=>x.t===e.tema);
+    return `${e.tema} — ${t?.nombre?.substring(0,40)||e.tema}`;
   } else {
-    const num = parseInt(e.tema);
+    const num = parseInt(e.tema?.replace('E',''));
     const t = TEMAS.find(x=>x.t===num);
-    return `T${String(num).padStart(2,'0')} — ${t?.nombre?.substring(0,40)||'Tema '+num}`;
+    return `${e.tema||'?'} — ${t?.nombre?.substring(0,40)||'Tema '+num}`;
   }
 }
 
