@@ -324,6 +324,40 @@
   .modal-title { font-size: 15px; font-weight: 700; }
   .modal-body { padding: 16px; }
 
+  /* Session action buttons */
+  .session-actions { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-shrink: 0; }
+  .move-btn {
+    padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--fg2); font-size: 10px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.03em; transition: background .12s, color .12s;
+    white-space: nowrap;
+  }
+  .move-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+  /* Add-session button in day detail header */
+  .add-session-btn {
+    padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--fg3); font-size: 10px; font-weight: 600;
+    cursor: pointer; letter-spacing: 0.03em; transition: background .12s, color .12s;
+  }
+  .add-session-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+  /* Free sessions (added manually) */
+  .session-row.free-session { background: var(--surface2); }
+  .session-row.free-session .session-row-type::after { content: ' · libre'; color: var(--fg3); font-weight: 400; }
+
+  /* Move-to modal date grid */
+  .move-date-grid { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; }
+  .move-date-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); cursor: pointer; transition: background .12s, border-color .12s;
+  }
+  .move-date-option:hover { background: var(--accent-dim); border-color: var(--accent); }
+  .move-date-option-date { font-size: 12px; font-weight: 600; min-width: 80px; }
+  .move-date-option-info { font-size: 11px; color: var(--fg2); flex: 1; }
+  .move-date-option-week { font-size: 10px; font-weight: 700; color: var(--fg3); background: var(--surface); border-radius: 4px; padding: 1px 6px; }
+
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
 </style>
 
@@ -533,6 +567,37 @@
   </div>
 </div>
 
+<!-- Modal Mover sesión -->
+<div class="modal-backdrop" id="moveModal" style="display:none" onclick="closeMoveModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="moveModalTitle">Mover sesión a…</span>
+      <button class="icon-btn" onclick="closeMoveModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--fg2);margin-bottom:12px" id="moveModalDesc"></div>
+      <div class="move-date-grid" id="moveDateGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Añadir sesión libre -->
+<div class="modal-backdrop" id="addSessionModal" style="display:none" onclick="closeAddSessionModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-title" id="addSessionModalTitle">Añadir sesión</span>
+      <button class="icon-btn" onclick="closeAddSessionModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn" style="background:var(--accent-dim);color:var(--accent);text-align:left;padding:12px 14px" onclick="addFreeSession('especifica')">📚 Sesión específica</button>
+        <button class="btn" style="background:var(--surface2);color:var(--fg);text-align:left;padding:12px 14px" onclick="addFreeSession('general')">📖 Sesión general · Bus</button>
+        <button class="btn" style="background:var(--surface2);color:var(--fg);text-align:left;padding:12px 14px" onclick="addFreeSession('descanso')">🛏 Descanso / Test libre</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ─── SUPABASE CONFIG ────────────────────────────────── */
 const SUPABASE_URL = window.__ENV?.SUPABASE_URL || '';
@@ -695,44 +760,58 @@ const WEEK_PLAN = [
 ];
 
 /* ─── STATE ─────────────────────────────────────────── */
-// topicStatus keys: numeric 1-58 for específica, "G01"-"G27" for general
-let state = { topicStatus:{}, sessions:{}, tests:[] };
-
-function loadLocal() {
-  try { const s = localStorage.getItem('opos-v2'); if(s) state = {...state,...JSON.parse(s)}; } catch(e){}
-}
-function saveLocal() {
-  try { localStorage.setItem('opos-v2', JSON.stringify(state)); } catch(e){}
-}
+// Supabase es la única fuente de verdad. Sin localStorage para datos.
+// topicStatus keys: numeric 1-58 para específica, "G01"-"G27" para general
+// movedSessions: {originalKey: true} — sesiones ocultas de su día original
+// addedSessions: {targetDate: [{type, key}]} — sesiones movidas/añadidas a un día
+let state = { topicStatus:{}, sessions:{}, tests:[], movedSessions:{}, addedSessions:{} };
 
 /* ─── SUPABASE SYNC ─────────────────────────────────── */
 async function syncAll() {
   if (!supabaseReady) return;
   setSyncBtn('spin');
   try {
-    const {data: statuses} = await db.from('topic_status').select('*');
+    const [
+      {data: statuses},
+      {data: sessions},
+      {data: tests},
+      {data: appState},
+    ] = await Promise.all([
+      db.from('topic_status').select('*'),
+      db.from('sessions').select('*'),
+      db.from('tests').select('*').order('date', {ascending:false}),
+      db.from('app_state').select('*').eq('key','planning').maybeSingle(),
+    ]);
+
+    state.topicStatus = {};
     if (statuses) statuses.forEach(r => { state.topicStatus[r.topic_num] = r.status; });
 
-    const {data: sessions} = await db.from('sessions').select('*');
+    state.sessions = {};
     if (sessions) sessions.forEach(r => { state.sessions[r.session_key] = r.status; });
 
-    const {data: tests} = await db.from('tests').select('*').order('date', {ascending:false});
-    if (tests) state.tests = tests;
+    state.tests = tests || [];
 
-    saveLocal();
+    if (appState?.value) {
+      const v = appState.value;
+      state.movedSessions = v.movedSessions || {};
+      state.addedSessions = v.addedSessions || {};
+    } else {
+      state.movedSessions = {};
+      state.addedSessions = {};
+    }
+
     setSyncBtn('ok');
     renderResumen();
     renderTemas();
     renderTests();
-    // Re-render week if visible
     if (document.getElementById('view-semana').classList.contains('active')) renderWeek();
   } catch(e) {
+    console.warn('syncAll error:', e);
     setSyncBtn('err');
   }
 }
 
 async function saveTopicStatus(topicNum, status) {
-  saveLocal();
   if (!supabaseReady) return;
   try {
     if (status) {
@@ -744,7 +823,6 @@ async function saveTopicStatus(topicNum, status) {
 }
 
 async function saveSession(key, status) {
-  saveLocal();
   if (!supabaseReady) return;
   try {
     if (status) {
@@ -756,19 +834,31 @@ async function saveSession(key, status) {
 }
 
 async function saveTest(entry) {
-  if (!supabaseReady) { saveLocal(); return entry; }
+  if (!supabaseReady) return entry;
   try {
-    const {data} = await db.from('tests').insert({
-      date: entry.date, tema: entry.tema, correct: entry.correct,
-      total: entry.total, notes: entry.notes,
-    }).select().single();
+    const payload = {date: entry.date, tema: entry.tema, parte: entry.parte||'E',
+      correct: entry.correct, total: entry.total, notes: entry.notes};
+    console.log('[saveTest] payload:', JSON.stringify(payload));
+    const {data} = await db.from('tests').insert(payload).select().single();
     return data || entry;
   } catch(e) { console.warn('Sync error:', e); return entry; }
 }
 
 async function deleteTestDB(id) {
-  if (!supabaseReady) { saveLocal(); return; }
+  if (!supabaseReady) return;
   try { await db.from('tests').delete().eq('id', id); } catch(e) {}
+}
+
+// Guarda movedSessions y addedSessions en la tabla app_state
+async function savePlanningState() {
+  if (!supabaseReady) return;
+  try {
+    await db.from('app_state').upsert({
+      key: 'planning',
+      value: { movedSessions: state.movedSessions, addedSessions: state.addedSessions },
+      updated_at: new Date().toISOString(),
+    });
+  } catch(e) { console.warn('Sync error planning:', e); }
 }
 
 /* ─── THEME ─────────────────────────────────────────── */
@@ -831,28 +921,51 @@ let viewingWeekStart = null;
 let selectedDayIndex = null; // 0=Mon … 6=Sun
 
 function getWeekSessions(dateStr, weekIdx) {
-  const plan = WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0];
-  const i = Math.round((parseDate(dateStr)-parseDate(viewingWeekStart))/(24*3600*1000));
-  const isSat = i===5, isSun = i===6;
-  const isOffice = (i===1||i===3||i===4); // Mar, Jue, Vie
+  // weekIdx may be null for dates outside the plan range
+  const plan = weekIdx ? (WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0]) : WEEK_PLAN[0];
+  const dt = parseDate(dateStr);
+  const dow = dt.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const isSat = dow===6, isSun = dow===0;
+  const isOffice = (dow===2||dow===4||dow===5); // Mar, Jue, Vie
 
   const sessions = [];
-  if (isSun) {
-    sessions.push({type:'Descanso / Test libre',icon:'🛏',key:`${dateStr}:domingo`,topics:[],isRest:true});
-  } else if (isSat) {
-    sessions.push({
-      type:'Específica intensiva',icon:'📚',key:`${dateStr}:especifica`,
-      topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
-    });
-  } else {
-    sessions.push({
-      type:'Específica',icon:'📚',key:`${dateStr}:especifica`,
-      topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
-    });
-    if (isOffice) {
-      sessions.push({type:'General · Bus',icon:'📖',key:`${dateStr}:general`,topics:[],isGeneral:true});
+
+  // Check if this date's plan sessions have been moved elsewhere
+  const movedAway = state.movedSessions || {};
+  const addedHere = state.addedSessions || {};
+
+  // Plan-based sessions (unless moved away)
+  if (weekIdx) {
+    if (isSun) {
+      const key = `${dateStr}:domingo`;
+      if (!movedAway[key]) sessions.push({type:'Descanso / Test libre',icon:'🛏',key,topics:[],isRest:true});
+    } else if (isSat) {
+      const key = `${dateStr}:especifica`;
+      if (!movedAway[key]) sessions.push({
+        type:'Específica intensiva',icon:'📚',key,
+        topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
+      });
+    } else {
+      const key = `${dateStr}:especifica`;
+      if (!movedAway[key]) sessions.push({
+        type:'Específica',icon:'📚',key,
+        topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
+      });
+      if (isOffice) {
+        const keyG = `${dateStr}:general`;
+        if (!movedAway[keyG]) sessions.push({type:'General · Bus',icon:'📖',key:keyG,topics:[],isGeneral:true});
+      }
     }
   }
+
+  // Sessions moved here from other days
+  const moved = addedHere[dateStr] || [];
+  for (const m of moved) {
+    if (m.type === 'especifica') sessions.push({type:'Específica',icon:'📚',key:m.key,topics:[],isFree:true});
+    else if (m.type === 'general') sessions.push({type:'General · Bus',icon:'📖',key:m.key,topics:[],isGeneral:true,isFree:true});
+    else sessions.push({type:'Descanso / Test libre',icon:'🛏',key:m.key,topics:[],isRest:true,isFree:true});
+  }
+
   return sessions;
 }
 
@@ -951,7 +1064,10 @@ function renderDayDetail(ws, weekIdx) {
   let html = `<div class="day-detail-card">
     <div class="day-detail-header">
       <div class="day-detail-title">${DAY_NAMES_FULL[i]}${isToday?' · Hoy':''}</div>
-      <div class="day-detail-sub">${fmtDateShort(dateStr)}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="day-detail-sub">${fmtDateShort(dateStr)}</div>
+        <button class="add-session-btn" data-date="${dateStr}" onclick="openAddSessionModal('${dateStr}')">+ Sesión</button>
+      </div>
     </div>`;
 
   if (sessions.length === 0) {
@@ -959,21 +1075,27 @@ function renderDayDetail(ws, weekIdx) {
   } else {
     for (const s of sessions) {
       const done = state.sessions[s.key] === 'done';
+      const isFree = !!s.isFree;
+      const moveBtn = isFree ? '' : `<button class="move-btn" onclick="openMoveModal('${s.key}','${s.type}','${dateStr}')">Mover a…</button>`;
+      const removeFreeBtn = isFree ? `<button class="move-btn" style="color:var(--red);border-color:var(--red)" onclick="removeFreeSession('${s.key}')">✕</button>` : '';
+
       if (s.isRest) {
         // Sunday: just a check for test/descanso
-        html += `<div class="session-row">
+        html += `<div class="session-row${isFree?' free-session':''}">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
+            <div style="margin-top:4px;display:flex;gap:4px">${moveBtn}${removeFreeBtn}</div>
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
       } else if (s.isGeneral) {
-        html += `<div class="session-row">
+        html += `<div class="session-row${isFree?' free-session':''}">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
             <div class="session-row-topics"><div class="session-topic-line"><span class="session-topic-name" style="color:var(--fg2)">NotebookLM podcast + test</span></div></div>
+            <div style="margin-top:4px;display:flex;gap:4px">${moveBtn}${removeFreeBtn}</div>
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
@@ -989,11 +1111,12 @@ function renderDayDetail(ws, weekIdx) {
           </div>`;
         }).join('') : `<div style="font-size:12px;color:var(--fg3)">Repaso libre</div>`;
 
-        html += `<div class="session-row">
+        html += `<div class="session-row${isFree?' free-session':''}">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
             <div class="session-row-topics">${topicsHtml}</div>
+            <div style="margin-top:4px;display:flex;gap:4px">${moveBtn}${removeFreeBtn}</div>
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
@@ -1181,7 +1304,8 @@ function populateTemasSelect() {
   grpGen.label = '📖 Parte general';
   TEMAS_GENERAL.forEach(t => {
     const o = document.createElement('option');
-    o.value = 'G:'+t.t;
+    // value: "G:3" — parte:número puro
+    o.value = 'G:'+t.t.replace('G','');
     o.textContent = `${t.t} — ${t.nombre}`;
     grpGen.appendChild(o);
   });
@@ -1213,12 +1337,11 @@ document.getElementById('saveTestBtn').addEventListener('click', async () => {
     btn.textContent='⚠ Completa los campos';
     setTimeout(()=>btn.textContent='Guardar test',2000); return;
   }
-  // temaVal is "E:4" or "G:G01"
+  // temaVal is "E:4" or "G:3" — parte siempre E/G, tema siempre número puro
   const [part, temaId] = temaVal.split(':');
   const entry = {id:Date.now(),date,tema:temaId,parte:part,correct,total,notes};
   const saved = await saveTest(entry);
   state.tests.unshift(saved||entry);
-  saveLocal();
   document.getElementById('testTema').value='';
   document.getElementById('testCorrect').value='';
   document.getElementById('testTotal').value='10';
@@ -1233,8 +1356,10 @@ document.getElementById('saveTestBtn').addEventListener('click', async () => {
 
 function temaLabel(e) {
   if (e.parte === 'G') {
-    const t = TEMAS_GENERAL.find(x=>x.t===e.tema);
-    return `${e.tema} — ${t?.nombre?.substring(0,40)||e.tema}`;
+    // tema es número puro, ej: "3" → buscar "G03"
+    const tKey = 'G'+String(e.tema).padStart(2,'0');
+    const t = TEMAS_GENERAL.find(x=>x.t===tKey);
+    return `${tKey} — ${t?.nombre?.substring(0,40)||tKey}`;
   } else {
     const num = parseInt(e.tema);
     const t = TEMAS.find(x=>x.t===num);
@@ -1287,7 +1412,6 @@ function openTestModal(id) {
 
 async function deleteTest(id) {
   state.tests = state.tests.filter(t=>t.id!==id);
-  saveLocal();
   await deleteTestDB(id);
   closeModal(); renderTests(); renderResumen();
 }
@@ -1353,21 +1477,126 @@ function renderResumen() {
   }).join('');
 }
 
+/* ─── MOVER / AÑADIR SESIONES ───────────────────────── */
+let moveModalKey = null;
+let addSessionDate = null;
+
+function openMoveModal(key, type, fromDate) {
+  moveModalKey = key;
+  document.getElementById('moveModalTitle').textContent = 'Mover sesión a…';
+  document.getElementById('moveModalDesc').textContent = `"${type}" del ${fmtDateShort(fromDate)}`;
+
+  // Build date options: next 60 days (skip today's date)
+  const grid = document.getElementById('moveDateGrid');
+  grid.innerHTML = '';
+  const todayStr = today();
+  const DAY_NAMES_FULL = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  for (let n = 1; n <= 60; n++) {
+    const d = addDays(todayStr, n);
+    if (d === fromDate) continue;
+    const dt = parseDate(d);
+    const dow = dt.getDay();
+    const dayName = DAY_NAMES_FULL[dow];
+    // Week number
+    const wsAbs = parseDate(WEEK_START_DATE);
+    const diffW = Math.floor((parseDate(weekStart(d)) - wsAbs)/(7*24*3600*1000));
+    const wkIdx = Math.max(1, Math.min(diffW+1, 25));
+    const plan = WEEK_PLAN.find(w=>w.week===wkIdx);
+    const wkLabel = plan ? `Sem ${wkIdx} · ${plan.bloque.split(' ').slice(0,3).join(' ')}` : `Sem ${wkIdx}`;
+    const el = document.createElement('div');
+    el.className = 'move-date-option';
+    el.innerHTML = `<div class="move-date-option-date">${dayName} ${fmtDateShort(d)}</div>
+      <div class="move-date-option-info">${wkLabel}</div>`;
+    el.addEventListener('click', () => doMoveSession(key, fromDate, d));
+    grid.appendChild(el);
+  }
+  document.getElementById('moveModal').style.display = 'flex';
+}
+
+function closeMoveModal(e) {
+  if (!e || e.target === document.getElementById('moveModal'))
+    document.getElementById('moveModal').style.display = 'none';
+  moveModalKey = null;
+}
+
+async function doMoveSession(key, fromDate, toDate) {
+  // Mark original as moved away
+  if (!state.movedSessions) state.movedSessions = {};
+  state.movedSessions[key] = true;
+  // Add to target date
+  if (!state.addedSessions) state.addedSessions = {};
+  if (!state.addedSessions[toDate]) state.addedSessions[toDate] = [];
+  // Determine type from key (dateStr:type)
+  const parts = key.split(':');
+  const typeSlug = parts[1]; // 'especifica', 'general', 'domingo'
+  const newKey = `${toDate}:moved-${key}`;
+  state.addedSessions[toDate].push({type: typeSlug === 'domingo' ? 'descanso' : typeSlug, key: newKey});
+  // Also transfer done status if it existed
+  if (state.sessions[key]) {
+    await saveSession(newKey, state.sessions[key]);
+    await saveSession(key, null);
+    state.sessions[newKey] = state.sessions[key];
+    delete state.sessions[key];
+  }
+  await savePlanningState();
+  closeMoveModal();
+  renderWeek();
+}
+
+function openAddSessionModal(dateStr) {
+  addSessionDate = dateStr;
+  document.getElementById('addSessionModalTitle').textContent = `Añadir sesión — ${fmtDateShort(dateStr)}`;
+  document.getElementById('addSessionModal').style.display = 'flex';
+}
+function closeAddSessionModal(e) {
+  if (!e || e.target === document.getElementById('addSessionModal'))
+    document.getElementById('addSessionModal').style.display = 'none';
+  addSessionDate = null;
+}
+
+async function addFreeSession(type) {
+  if (!addSessionDate) return;
+  if (!state.addedSessions) state.addedSessions = {};
+  if (!state.addedSessions[addSessionDate]) state.addedSessions[addSessionDate] = [];
+  const key = `${addSessionDate}:free-${type}-${Date.now()}`;
+  state.addedSessions[addSessionDate].push({type, key});
+  await savePlanningState();
+  closeAddSessionModal();
+  renderWeek();
+}
+
+async function removeFreeSession(key) {
+  // key is like "2026-10-22:moved-..." or "2026-10-22:free-..."
+  const dateStr = key.split(':')[0];
+  if (state.addedSessions && state.addedSessions[dateStr]) {
+    state.addedSessions[dateStr] = state.addedSessions[dateStr].filter(m => m.key !== key);
+    if (!state.addedSessions[dateStr].length) delete state.addedSessions[dateStr];
+  }
+  // If it was a moved session, restore the original
+  if (key.includes(':moved-')) {
+    const origKey = key.replace(`${dateStr}:moved-`, '');
+    if (state.movedSessions) delete state.movedSessions[origKey];
+    // Restore done status if any
+    if (state.sessions[key]) {
+      await saveSession(origKey, state.sessions[key]);
+      state.sessions[origKey] = state.sessions[key];
+    }
+  }
+  await saveSession(key, null);
+  delete state.sessions[key];
+  await savePlanningState();
+  renderWeek();
+}
+
 /* ─── SYNC BTN ───────────────────────────────────────── */
 document.getElementById('syncBtn').addEventListener('click', () => {
   if (supabaseReady) syncAll();
   else {
-    document.getElementById('modalTitle').textContent='Sincronización';
+    document.getElementById('modalTitle').textContent='Sin conexión';
     document.getElementById('modalBody').innerHTML=`<div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
-      <div style="background:var(--amber-dim);border-radius:8px;padding:12px">
-        <div style="font-weight:600;color:var(--amber);margin-bottom:4px">⚡ Modo local activo</div>
-        Los datos se guardan solo en este dispositivo.
-      </div>
-      <div style="background:var(--surface2);border-radius:8px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Datos guardados</div>
-        <div>Tests: <strong>${state.tests.length}</strong></div>
-        <div>Temas marcados: <strong>${Object.keys(state.topicStatus).length}</strong></div>
-        <div>Sesiones: <strong>${Object.keys(state.sessions).length}</strong></div>
+      <div style="background:var(--red-dim);border-radius:8px;padding:12px">
+        <div style="font-weight:600;color:var(--red);margin-bottom:4px">⚠ Sin conexión a Supabase</div>
+        Los datos no se pueden guardar hasta que se restaure la conexión. No cierres la app.
       </div>
     </div>`;
     document.getElementById('testModal').style.display='flex';
@@ -1380,9 +1609,8 @@ if ('serviceWorker' in navigator) {
 }
 
 /* ─── INIT ───────────────────────────────────────────── */
-loadLocal();
 applyTheme();
 populateTemasSelect();
-renderResumen();
+renderResumen(); // vacío hasta que cargue Supabase
 initSupabase();
 </script>
