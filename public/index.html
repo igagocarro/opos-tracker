@@ -344,8 +344,6 @@
   .add-session-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
   /* Free sessions (added manually) */
-  .session-row.free-session { background: var(--surface2); }
-  .session-row.free-session .session-row-type::after { content: ' · libre'; color: var(--fg3); font-weight: 400; }
 
   /* Move-to modal date grid */
   .move-date-grid { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; }
@@ -568,36 +566,7 @@
   </div>
 </div>
 
-<!-- Modal Mover sesión -->
-<div class="modal-backdrop" id="moveModal" style="display:none" onclick="closeMoveModal(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <span class="modal-title" id="moveModalTitle">Mover sesión a…</span>
-      <button class="icon-btn" onclick="closeMoveModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="font-size:12px;color:var(--fg2);margin-bottom:12px" id="moveModalDesc"></div>
-      <div class="move-date-grid" id="moveDateGrid"></div>
-    </div>
-  </div>
-</div>
 
-<!-- Modal Añadir sesión libre -->
-<div class="modal-backdrop" id="addSessionModal" style="display:none" onclick="closeAddSessionModal(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <span class="modal-title" id="addSessionModalTitle">Añadir sesión</span>
-      <button class="icon-btn" onclick="closeAddSessionModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button class="btn" style="background:var(--accent-dim);color:var(--accent);text-align:left;padding:12px 14px" onclick="addFreeSession('especifica')">📚 Sesión específica</button>
-        <button class="btn" style="background:var(--surface2);color:var(--fg);text-align:left;padding:12px 14px" onclick="addFreeSession('general')">📖 Sesión general · Bus</button>
-        <button class="btn" style="background:var(--surface2);color:var(--fg);text-align:left;padding:12px 14px" onclick="addFreeSession('descanso')">🛏 Descanso / Test libre</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 /* ─── SUPABASE CONFIG ────────────────────────────────── */
@@ -763,9 +732,7 @@ const WEEK_PLAN = [
 /* ─── STATE ─────────────────────────────────────────── */
 // Supabase es la única fuente de verdad. Sin localStorage para datos.
 // topicStatus keys: numeric 1-58 para específica, "G01"-"G27" para general
-// movedSessions: {originalKey: true} — sesiones ocultas de su día original
-// addedSessions: {targetDate: [{type, key}]} — sesiones movidas/añadidas a un día
-let state = { topicStatus:{}, sessions:{}, tests:[], movedSessions:{}, addedSessions:{} };
+let state = { topicStatus:{}, sessions:{}, tests:[], planSessions:[] };
 
 /* ─── SUPABASE SYNC ─────────────────────────────────── */
 async function syncAll() {
@@ -776,12 +743,12 @@ async function syncAll() {
       {data: statuses},
       {data: sessions},
       {data: tests},
-      {data: appState},
+      {data: planSessions},
     ] = await Promise.all([
       db.from('topic_status').select('*'),
       db.from('sessions').select('*'),
       db.from('tests').select('*').order('date', {ascending:false}),
-      db.from('app_state').select('*').eq('key','planning').maybeSingle(),
+      db.from('plan_sessions').select('*').order('date', {ascending:true}).order('id', {ascending:true}),
     ]);
 
     state.topicStatus = {};
@@ -791,15 +758,7 @@ async function syncAll() {
     if (sessions) sessions.forEach(r => { state.sessions[r.session_key] = r.status; });
 
     state.tests = tests || [];
-
-    if (appState?.value) {
-      const v = appState.value;
-      state.movedSessions = v.movedSessions || {};
-      state.addedSessions = v.addedSessions || {};
-    } else {
-      state.movedSessions = {};
-      state.addedSessions = {};
-    }
+    state.planSessions = planSessions || [];
 
     setSyncBtn('ok');
     renderResumen();
@@ -850,17 +809,6 @@ async function deleteTestDB(id) {
   try { await db.from('tests').delete().eq('id', id); } catch(e) {}
 }
 
-// Guarda movedSessions y addedSessions en la tabla app_state
-async function savePlanningState() {
-  if (!supabaseReady) return;
-  try {
-    await db.from('app_state').upsert({
-      key: 'planning',
-      value: { movedSessions: state.movedSessions, addedSessions: state.addedSessions },
-      updated_at: new Date().toISOString(),
-    });
-  } catch(e) { console.warn('Sync error planning:', e); }
-}
 
 /* ─── THEME ─────────────────────────────────────────── */
 let theme = 'system';
@@ -917,57 +865,36 @@ function statusIcon(st) {
 }
 
 /* ─── WEEK VIEW ─────────────────────────────────────── */
-const WEEK_START_DATE = '2026-10-19';
+const WEEK_START_DATE = '2026-10-26';
 let viewingWeekStart = null;
 let selectedDayIndex = null; // 0=Mon … 6=Sun
 
-function getWeekSessions(dateStr, weekIdx) {
-  // weekIdx may be null for dates outside the plan range
-  const plan = weekIdx ? (WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0]) : WEEK_PLAN[0];
-  const dt = parseDate(dateStr);
-  const dow = dt.getDay(); // 0=Sun,1=Mon,...,6=Sat
-  const isSat = dow===6, isSun = dow===0;
-  const isOffice = (dow===2||dow===4||dow===5); // Mar, Jue, Vie
-
-  const sessions = [];
-
-  // Check if this date's plan sessions have been moved elsewhere
-  const movedAway = state.movedSessions || {};
-  const addedHere = state.addedSessions || {};
-
-  // Plan-based sessions (unless moved away)
-  if (weekIdx) {
-    if (isSun) {
-      const key = `${dateStr}:domingo`;
-      if (!movedAway[key]) sessions.push({type:'Descanso / Test libre',icon:'🛏',key,topics:[],isRest:true});
-    } else if (isSat) {
-      const key = `${dateStr}:especifica`;
-      if (!movedAway[key]) sessions.push({
-        type:'Específica intensiva',icon:'📚',key,
-        topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
-      });
+function getWeekSessions(dateStr) {
+  // Lee las sesiones del día desde state.planSessions (cargado de Supabase)
+  const rows = state.planSessions.filter(r => r.date === dateStr);
+  return rows.map(r => {
+    const key = `${dateStr}:${r.type}:${r.id}`;
+    if (r.type === 'descanso') {
+      return {type:'Descanso',icon:'🛏',key,topics:[],isRest:true,planId:r.id};
+    } else if (r.type === 'general') {
+      return {type:'General',icon:'📖',key,topics:[],isGeneral:true,planId:r.id};
     } else {
-      const key = `${dateStr}:especifica`;
-      if (!movedAway[key]) sessions.push({
-        type:'Específica',icon:'📚',key,
+      // especifica — buscar temas del bloque de la semana
+      const weekIdx = getWeekIdx(dateStr);
+      const plan = weekIdx ? (WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0]) : WEEK_PLAN[0];
+      return {
+        type:'Específica',icon:'📚',key,planId:r.id,
         topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
-      });
-      if (isOffice) {
-        const keyG = `${dateStr}:general`;
-        if (!movedAway[keyG]) sessions.push({type:'General · Bus',icon:'📖',key:keyG,topics:[],isGeneral:true});
-      }
+      };
     }
-  }
+  });
+}
 
-  // Sessions moved here from other days
-  const moved = addedHere[dateStr] || [];
-  for (const m of moved) {
-    if (m.type === 'especifica') sessions.push({type:'Específica',icon:'📚',key:m.key,topics:[],isFree:true});
-    else if (m.type === 'general') sessions.push({type:'General · Bus',icon:'📖',key:m.key,topics:[],isGeneral:true,isFree:true});
-    else sessions.push({type:'Descanso / Test libre',icon:'🛏',key:m.key,topics:[],isRest:true,isFree:true});
-  }
-
-  return sessions;
+function getWeekIdx(dateStr) {
+  const startAbs = parseDate(WEEK_START_DATE);
+  const diff = Math.floor((parseDate(dateStr) - startAbs)/(7*24*3600*1000));
+  if (diff < 0) return null;
+  return Math.max(1, Math.min(diff+1, 25));
 }
 
 function renderWeek() {
@@ -988,16 +915,16 @@ function renderWeek() {
 
   if (isBeforeStart) {
     document.getElementById('weekTitle').textContent = 'Antes del inicio';
-    document.getElementById('weekRange').textContent = 'El planning empieza el 19 oct';
+    document.getElementById('weekRange').textContent = 'El planning empieza el 26 oct';
     document.getElementById('dayGrid').innerHTML = '';
-    document.getElementById('dayDetail').innerHTML = `<div class="before-start"><div class="before-start-icon">📅</div><div style="font-size:14px;font-weight:600">El planning empieza el 19 de octubre</div><div style="font-size:12px">Navega hacia delante para ver la primera semana</div></div>`;
+    document.getElementById('dayDetail').innerHTML = `<div class="before-start"><div class="before-start-icon">📅</div><div style="font-size:14px;font-weight:600">El planning empieza el 26 de octubre</div><div style="font-size:12px">Navega hacia delante para ver la primera semana</div></div>`;
     return;
   }
 
   const weekIdx = Math.max(1, Math.min(diff+1, 25));
   const plan = WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0];
 
-  document.getElementById('weekTitle').textContent = `Semana ${weekIdx} · ${plan.bloque}`;
+  document.getElementById('weekTitle').textContent = plan ? `Semana ${weekIdx} · ${plan.bloque}` : `Semana ${weekIdx}`;
   document.getElementById('weekRange').textContent = `${fmtDateShort(ws)} – ${fmtDateShort(we)}`;
 
   const DAY_NAMES = ['L','M','X','J','V','S','D'];
@@ -1019,7 +946,7 @@ function renderWeek() {
   for (let i=0;i<7;i++) {
     const dateStr = addDays(ws, i);
     const isToday = dateStr === todayStr;
-    const sessions = getWeekSessions(dateStr, weekIdx);
+    const sessions = getWeekSessions(dateStr);
     // Icons for this day
     const icons = sessions.map(s=>s.icon).join('');
 
@@ -1036,7 +963,7 @@ function renderWeek() {
   }
 
   // Detail panel for selected day
-  renderDayDetail(ws, weekIdx);
+  renderDayDetail(ws);
 
   document.getElementById('prevWeek').onclick = () => {
     if (ws <= WEEK_START_DATE) return;
@@ -1051,24 +978,20 @@ function renderWeek() {
   };
 }
 
-function renderDayDetail(ws, weekIdx) {
+function renderDayDetail(ws) {
   const i = selectedDayIndex ?? 0;
   const dateStr = addDays(ws, i);
   const DAY_NAMES_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   const todayStr = today();
   const isToday = dateStr === todayStr;
-  const isPast = dateStr < todayStr;
 
-  const sessions = getWeekSessions(dateStr, weekIdx);
+  const sessions = getWeekSessions(dateStr);
   const container = document.getElementById('dayDetail');
 
   let html = `<div class="day-detail-card">
     <div class="day-detail-header">
       <div class="day-detail-title">${DAY_NAMES_FULL[i]}${isToday?' · Hoy':''}</div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div class="day-detail-sub">${fmtDateShort(dateStr)}</div>
-        <button class="add-session-btn" data-date="${dateStr}" onclick="openAddSessionModal('${dateStr}')">+ Sesión</button>
-      </div>
+      <div class="day-detail-sub">${fmtDateShort(dateStr)}</div>
     </div>`;
 
   if (sessions.length === 0) {
@@ -1076,27 +999,21 @@ function renderDayDetail(ws, weekIdx) {
   } else {
     for (const s of sessions) {
       const done = state.sessions[s.key] === 'done';
-      const isFree = !!s.isFree;
-      const moveBtn = isFree ? '' : `<button class="move-btn" onclick="openMoveModal('${s.key}','${s.type}','${dateStr}')">Mover a…</button>`;
-      const removeFreeBtn = isFree ? `<button class="move-btn" style="color:var(--red);border-color:var(--red)" onclick="removeFreeSession('${s.key}')">✕</button>` : '';
 
       if (s.isRest) {
-        // Sunday: just a check for test/descanso
-        html += `<div class="session-row${isFree?' free-session':''}">
+        html += `<div class="session-row">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
-            <div style="margin-top:4px;display:flex;gap:4px">${moveBtn}${removeFreeBtn}</div>
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
       } else if (s.isGeneral) {
-        html += `<div class="session-row${isFree?' free-session':''}">
+        html += `<div class="session-row">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
             <div class="session-row-topics"><div class="session-topic-line"><span class="session-topic-name" style="color:var(--fg2)">NotebookLM podcast + test</span></div></div>
-            <div style="margin-top:4px;display:flex;gap:4px">${moveBtn}${removeFreeBtn}</div>
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
@@ -1112,12 +1029,11 @@ function renderDayDetail(ws, weekIdx) {
           </div>`;
         }).join('') : `<div style="font-size:12px;color:var(--fg3)">Repaso libre</div>`;
 
-        html += `<div class="session-row${isFree?' free-session':''}">
+        html += `<div class="session-row">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
             <div class="session-row-topics">${topicsHtml}</div>
-            <div style="margin-top:4px;display:flex;gap:4px">${moveBtn}${removeFreeBtn}</div>
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
@@ -1137,7 +1053,7 @@ function renderDayDetail(ws, weekIdx) {
       if (next) state.sessions[key] = next;
       else delete state.sessions[key];
       await saveSession(key, next);
-      renderDayDetail(ws, weekIdx);
+      renderDayDetail(ws);
       renderResumen();
     });
   });
@@ -1563,116 +1479,6 @@ function renderResumen() {
   }).join('');
 }
 
-/* ─── MOVER / AÑADIR SESIONES ───────────────────────── */
-let moveModalKey = null;
-let addSessionDate = null;
-
-function openMoveModal(key, type, fromDate) {
-  moveModalKey = key;
-  document.getElementById('moveModalTitle').textContent = 'Mover sesión a…';
-  document.getElementById('moveModalDesc').textContent = `"${type}" del ${fmtDateShort(fromDate)}`;
-
-  // Build date options: next 60 days (skip today's date)
-  const grid = document.getElementById('moveDateGrid');
-  grid.innerHTML = '';
-  const todayStr = today();
-  const DAY_NAMES_FULL = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  for (let n = 1; n <= 60; n++) {
-    const d = addDays(todayStr, n);
-    if (d === fromDate) continue;
-    const dt = parseDate(d);
-    const dow = dt.getDay();
-    const dayName = DAY_NAMES_FULL[dow];
-    // Week number
-    const wsAbs = parseDate(WEEK_START_DATE);
-    const diffW = Math.floor((parseDate(weekStart(d)) - wsAbs)/(7*24*3600*1000));
-    const wkIdx = Math.max(1, Math.min(diffW+1, 25));
-    const plan = WEEK_PLAN.find(w=>w.week===wkIdx);
-    const wkLabel = plan ? `Sem ${wkIdx} · ${plan.bloque.split(' ').slice(0,3).join(' ')}` : `Sem ${wkIdx}`;
-    const el = document.createElement('div');
-    el.className = 'move-date-option';
-    el.innerHTML = `<div class="move-date-option-date">${dayName} ${fmtDateShort(d)}</div>
-      <div class="move-date-option-info">${wkLabel}</div>`;
-    el.addEventListener('click', () => doMoveSession(key, fromDate, d));
-    grid.appendChild(el);
-  }
-  document.getElementById('moveModal').style.display = 'flex';
-}
-
-function closeMoveModal(e) {
-  if (!e || e.target === document.getElementById('moveModal'))
-    document.getElementById('moveModal').style.display = 'none';
-  moveModalKey = null;
-}
-
-async function doMoveSession(key, fromDate, toDate) {
-  // Mark original as moved away
-  if (!state.movedSessions) state.movedSessions = {};
-  state.movedSessions[key] = true;
-  // Add to target date
-  if (!state.addedSessions) state.addedSessions = {};
-  if (!state.addedSessions[toDate]) state.addedSessions[toDate] = [];
-  // Determine type from key (dateStr:type)
-  const parts = key.split(':');
-  const typeSlug = parts[1]; // 'especifica', 'general', 'domingo'
-  const newKey = `${toDate}:moved-${key}`;
-  state.addedSessions[toDate].push({type: typeSlug === 'domingo' ? 'descanso' : typeSlug, key: newKey});
-  // Also transfer done status if it existed
-  if (state.sessions[key]) {
-    await saveSession(newKey, state.sessions[key]);
-    await saveSession(key, null);
-    state.sessions[newKey] = state.sessions[key];
-    delete state.sessions[key];
-  }
-  await savePlanningState();
-  closeMoveModal();
-  renderWeek();
-}
-
-function openAddSessionModal(dateStr) {
-  addSessionDate = dateStr;
-  document.getElementById('addSessionModalTitle').textContent = `Añadir sesión — ${fmtDateShort(dateStr)}`;
-  document.getElementById('addSessionModal').style.display = 'flex';
-}
-function closeAddSessionModal(e) {
-  if (!e || e.target === document.getElementById('addSessionModal'))
-    document.getElementById('addSessionModal').style.display = 'none';
-  addSessionDate = null;
-}
-
-async function addFreeSession(type) {
-  if (!addSessionDate) return;
-  if (!state.addedSessions) state.addedSessions = {};
-  if (!state.addedSessions[addSessionDate]) state.addedSessions[addSessionDate] = [];
-  const key = `${addSessionDate}:free-${type}-${Date.now()}`;
-  state.addedSessions[addSessionDate].push({type, key});
-  await savePlanningState();
-  closeAddSessionModal();
-  renderWeek();
-}
-
-async function removeFreeSession(key) {
-  // key is like "2026-10-22:moved-..." or "2026-10-22:free-..."
-  const dateStr = key.split(':')[0];
-  if (state.addedSessions && state.addedSessions[dateStr]) {
-    state.addedSessions[dateStr] = state.addedSessions[dateStr].filter(m => m.key !== key);
-    if (!state.addedSessions[dateStr].length) delete state.addedSessions[dateStr];
-  }
-  // If it was a moved session, restore the original
-  if (key.includes(':moved-')) {
-    const origKey = key.replace(`${dateStr}:moved-`, '');
-    if (state.movedSessions) delete state.movedSessions[origKey];
-    // Restore done status if any
-    if (state.sessions[key]) {
-      await saveSession(origKey, state.sessions[key]);
-      state.sessions[origKey] = state.sessions[key];
-    }
-  }
-  await saveSession(key, null);
-  delete state.sessions[key];
-  await savePlanningState();
-  renderWeek();
-}
 
 /* ─── SYNC BTN ───────────────────────────────────────── */
 document.getElementById('syncBtn').addEventListener('click', () => {
