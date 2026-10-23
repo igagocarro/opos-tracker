@@ -301,6 +301,11 @@
   .btn-primary:hover { opacity: 0.9; }
   .btn-secondary { background: var(--surface2); color: var(--fg); border: 1px solid var(--border); }
   .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+  .session-actions { display: flex; gap: 4px; margin-top: 5px; }
+  .session-act-btn { font-size: 11px; padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface); color: var(--fg2); cursor: pointer; }
+  .session-act-btn:hover { background: var(--surface2); color: var(--fg); }
+  .session-act-btn.danger { color: var(--red); border-color: var(--red-dim); }
+  .session-act-btn.danger:hover { background: var(--red-dim); }
   .test-entry { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; cursor: pointer; transition: background .12s; }
   .test-entry:last-child { border-bottom: none; }
   .test-entry:hover { background: var(--surface2); }
@@ -380,7 +385,7 @@
 
   <!-- Nav (5 tabs) -->
   <nav class="nav">
-    <button class="nav-btn active" data-view="resumen"><span class="nav-icon">📊</span>Resumen</button>
+    <button class="nav-btn active" data-view="resumen"><span class="nav-icon">📑</span>Resumen</button>
     <button class="nav-btn" data-view="semana"><span class="nav-icon">📅</span>Semana</button>
     <button class="nav-btn" data-view="temas"><span class="nav-icon">📚</span>Temas</button>
     <button class="nav-btn" data-view="fases"><span class="nav-icon">🎯</span>Fases</button>
@@ -470,7 +475,7 @@
       <!-- Toggle específica/general -->
       <div class="temas-toggle">
         <button class="temas-toggle-btn active" id="togEspecifica" onclick="switchTemasTab('especifica')">
-          📚 Específica <span id="badgeEsp" style="font-size:10px;background:var(--surface2);border-radius:99px;padding:1px 6px;margin-left:2px">58</span>
+          📈 Específica <span id="badgeEsp" style="font-size:10px;background:var(--surface2);border-radius:99px;padding:1px 6px;margin-left:2px">58</span>
         </button>
         <button class="temas-toggle-btn" id="togGeneral" onclick="switchTemasTab('general')">
           📖 General <span id="badgeGen" style="font-size:10px;background:var(--surface2);border-radius:99px;padding:1px 6px;margin-left:2px">26</span>
@@ -877,13 +882,13 @@ function getWeekSessions(dateStr) {
     if (r.type === 'descanso') {
       return {type:'Descanso',icon:'🛏',key,topics:[],isRest:true,planId:r.id};
     } else if (r.type === 'general') {
-      return {type:'General',icon:'📖',key,topics:[],isGeneral:true,planId:r.id};
+      return {type:'General',icon:'⚖️',key,topics:[],isGeneral:true,planId:r.id};
     } else {
       // especifica — buscar temas del bloque de la semana
       const weekIdx = getWeekIdx(dateStr);
       const plan = weekIdx ? (WEEK_PLAN.find(w=>w.week===weekIdx) || WEEK_PLAN[0]) : WEEK_PLAN[0];
       return {
-        type:'Específica',icon:'📚',key,planId:r.id,
+        type:'Específica',icon:'📈',key,planId:r.id,
         topics: plan.temas.map(t => TEMAS.find(x=>x.t===t)).filter(Boolean)
       };
     }
@@ -995,16 +1000,21 @@ function renderDayDetail(ws) {
     </div>`;
 
   if (sessions.length === 0) {
-    html += `<div class="rest-row">🛏 Descanso</div>`;
+    html += `<div class="rest-row">🛏 Sin sesiones</div>`;
   } else {
     for (const s of sessions) {
       const done = state.sessions[s.key] === 'done';
+      const actionBtns = `<div class="session-actions">
+        <button class="session-act-btn" data-move="${s.planId}" data-date="${dateStr}">Mover →</button>
+        <button class="session-act-btn danger" data-delete="${s.planId}">🗑</button>
+      </div>`;
 
       if (s.isRest) {
         html += `<div class="session-row">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
+            ${actionBtns}
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
@@ -1014,11 +1024,11 @@ function renderDayDetail(ws) {
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
             <div class="session-row-topics"><div class="session-topic-line"><span class="session-topic-name" style="color:var(--fg2)">NotebookLM podcast + test</span></div></div>
+            ${actionBtns}
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
       } else {
-        // Específica: list individual topics
         const topicsHtml = s.topics.length > 0 ? s.topics.map(tema => {
           const st = state.topicStatus[tema.t];
           const icon = statusIcon(st);
@@ -1034,6 +1044,7 @@ function renderDayDetail(ws) {
           <div class="session-row-info">
             <div class="session-row-type">${s.type}</div>
             <div class="session-row-topics">${topicsHtml}</div>
+            ${actionBtns}
           </div>
           <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
         </div>`;
@@ -1041,10 +1052,18 @@ function renderDayDetail(ws) {
     }
   }
 
+  // Botón añadir sesión
+  html += `<div style="margin-top:10px">
+    <button class="btn btn-secondary" style="width:100%;font-size:13px" data-adddate="${dateStr}">+ Añadir sesión</button>
+  </div>`;
+
+  // Panel mover (oculto por defecto)
+  html += `<div id="movePanelWrap" style="display:none;margin-top:10px"></div>`;
+
   html += '</div>';
   container.innerHTML = html;
 
-  // Wire check buttons — simple toggle done/not-done
+  // Check buttons
   container.querySelectorAll('.check-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
       const key = this.dataset.key;
@@ -1056,6 +1075,112 @@ function renderDayDetail(ws) {
       renderDayDetail(ws);
       renderResumen();
     });
+  });
+
+  // Eliminar sesión
+  container.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const id = this.dataset.delete;
+      if (!confirm('¿Eliminar esta sesión del plan?')) return;
+      await deletePlanSession(id);
+      renderDayDetail(ws);
+      renderWeek();
+    });
+  });
+
+  // Mover sesión — muestra selector de fecha inline
+  container.querySelectorAll('[data-move]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.move;
+      const fromDate = this.dataset.date;
+      showMovePanel(id, fromDate, ws);
+    });
+  });
+
+  // Añadir sesión
+  container.querySelectorAll('[data-adddate]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      showAddPanel(this.dataset.adddate, ws);
+    });
+  });
+}
+
+/* ─── PLAN SESSIONS CRUD ────────────────────────────── */
+async function deletePlanSession(id) {
+  state.planSessions = state.planSessions.filter(r => String(r.id) !== String(id));
+  if (!supabaseReady) return;
+  try { await db.from('plan_sessions').delete().eq('id', id); }
+  catch(e) { console.warn('Error deleting plan session:', e); }
+}
+
+async function addPlanSession(date, type) {
+  const row = { date, type };
+  if (supabaseReady) {
+    try {
+      const { data } = await db.from('plan_sessions').insert(row).select().single();
+      if (data) { state.planSessions.push(data); state.planSessions.sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id); return; }
+    } catch(e) { console.warn('Error adding plan session:', e); }
+  }
+  state.planSessions.push({...row, id: Date.now()});
+}
+
+async function movePlanSession(id, newDate) {
+  const row = state.planSessions.find(r => String(r.id) === String(id));
+  if (!row) return;
+  row.date = newDate;
+  if (supabaseReady) {
+    try { await db.from('plan_sessions').update({date: newDate}).eq('id', id); }
+    catch(e) { console.warn('Error moving plan session:', e); }
+  }
+}
+
+function showMovePanel(id, fromDate, ws) {
+  const wrap = document.getElementById('movePanelWrap');
+  if (!wrap) return;
+  const DAY_NAMES_SHORT = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  let opts = '';
+  for (let n = -14; n <= 30; n++) {
+    if (n === 0) continue;
+    const d = addDays(fromDate, n);
+    const dow = parseDate(d).getDay();
+    opts += `<option value="${d}">${DAY_NAMES_SHORT[dow]} ${fmtDateShort(d)}</option>`;
+  }
+  wrap.innerHTML = `<div style="background:var(--surface2);border-radius:8px;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--fg2)">Mover a:</span>
+    <select id="moveDateSel" style="flex:1;min-width:140px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:13px">${opts}</select>
+    <button class="btn btn-primary" style="font-size:12px;padding:5px 12px" id="confirmMoveBtn">Confirmar</button>
+    <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="document.getElementById('movePanelWrap').style.display='none'">Cancelar</button>
+  </div>`;
+  wrap.style.display = 'block';
+  document.getElementById('confirmMoveBtn').addEventListener('click', async function() {
+    const toDate = document.getElementById('moveDateSel').value;
+    await movePlanSession(id, toDate);
+    wrap.style.display = 'none';
+    renderDayDetail(ws);
+    renderWeek();
+  });
+}
+
+function showAddPanel(dateStr, ws) {
+  const wrap = document.getElementById('movePanelWrap');
+  if (!wrap) return;
+  wrap.innerHTML = `<div style="background:var(--surface2);border-radius:8px;padding:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--fg2)">Tipo:</span>
+    <select id="addTypeSel" style="flex:1;min-width:120px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:13px">
+      <option value="especifica">📈 Específica</option>
+      <option value="general">📖 General</option>
+      <option value="descanso">🛏 Descanso</option>
+    </select>
+    <button class="btn btn-primary" style="font-size:12px;padding:5px 12px" id="confirmAddBtn">Añadir</button>
+    <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="document.getElementById('movePanelWrap').style.display='none'">Cancelar</button>
+  </div>`;
+  wrap.style.display = 'block';
+  document.getElementById('confirmAddBtn').addEventListener('click', async function() {
+    const type = document.getElementById('addTypeSel').value;
+    await addPlanSession(dateStr, type);
+    wrap.style.display = 'none';
+    renderDayDetail(ws);
+    renderWeek();
   });
 }
 
@@ -1208,7 +1333,7 @@ function populateTemasSelect() {
   const sel = document.getElementById('testTema');
   // Específica — value: "E04", "E27", etc.
   const grpEsp = document.createElement('optgroup');
-  grpEsp.label = '📚 Parte específica';
+  grpEsp.label = '📈 Parte específica';
   TEMAS.forEach(t => {
     const o = document.createElement('option');
     o.value = 'E'+String(t.t).padStart(2,'0');
@@ -1218,7 +1343,7 @@ function populateTemasSelect() {
   sel.appendChild(grpEsp);
   // General — value: "G09", "G03", etc.
   const grpGen = document.createElement('optgroup');
-  grpGen.label = '📖 Parte general';
+  grpGen.label = '⚖️ Parte general';
   TEMAS_GENERAL.forEach(t => {
     const o = document.createElement('option');
     o.value = t.t; // ya es "G09" etc.
@@ -1351,12 +1476,12 @@ function openEditTest(id) {
   document.getElementById('modalTitle').textContent='Editar test';
   // Construir select de temas igual que el formulario principal
   let optionsHtml = '<option value="">— Elige tema —</option>';
-  optionsHtml += '<optgroup label="📚 Parte específica">';
+  optionsHtml += '<optgroup label="📈 Parte específica">';
   TEMAS.forEach(t => {
     const val = 'E'+String(t.t).padStart(2,'0');
     optionsHtml += `<option value="${val}"${e.tema===val?' selected':''}>${val} — ${t.nombre.substring(0,50)}</option>`;
   });
-  optionsHtml += '</optgroup><optgroup label="📖 Parte general">';
+  optionsHtml += '</optgroup><optgroup label="⚖️ Parte general">';
   TEMAS_GENERAL.forEach(t => {
     optionsHtml += `<option value="${t.t}"${e.tema===t.t?' selected':''}>${t.t} — ${t.nombre.substring(0,50)}</option>`;
   });
