@@ -300,6 +300,7 @@
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-primary:hover { opacity: 0.9; }
   .btn-secondary { background: var(--surface2); color: var(--fg); border: 1px solid var(--border); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
   .test-entry { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; cursor: pointer; transition: background .12s; }
   .test-entry:last-child { border-bottom: none; }
   .test-entry:hover { background: var(--surface2); }
@@ -1364,6 +1365,18 @@ function temaLabel(e) {
   }
 }
 
+let testSortOrder = 'date'; // 'date' | 'tema'
+
+function getSortedTests() {
+  const tests = [...state.tests];
+  if (testSortOrder === 'tema') {
+    tests.sort((a,b) => (a.tema||'').localeCompare(b.tema||''));
+  } else {
+    tests.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  }
+  return tests;
+}
+
 function renderTests() {
   const container = document.getElementById('testsList');
   document.getElementById('testListTitle').textContent=`Historial de tests (${state.tests.length})`;
@@ -1371,7 +1384,13 @@ function renderTests() {
     container.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Guarda tu primer test arriba</div></div>';
     return;
   }
-  container.innerHTML = state.tests.slice(0,50).map(e => {
+  // Selector de orden
+  const sortHtml = `<div style="display:flex;gap:6px;margin-bottom:10px">
+    <button class="btn btn-sm${testSortOrder==='date'?' btn-primary':' btn-secondary'}" onclick="testSortOrder='date';renderTests()">Por fecha</button>
+    <button class="btn btn-sm${testSortOrder==='tema'?' btn-primary':' btn-secondary'}" onclick="testSortOrder='tema';renderTests()">Por tema</button>
+  </div>`;
+  const sorted = getSortedTests();
+  const itemsHtml = sorted.slice(0,50).map(e => {
     const pct = Math.round(e.correct/e.total*100);
     const sc = pct>=70?'score-good':pct>=50?'score-mid':'score-low';
     const wr = e.notes?`<div class="test-wrong">Notas: ${e.notes.substring(0,60)}${e.notes.length>60?'…':''}</div>`:'';
@@ -1383,13 +1402,14 @@ function renderTests() {
       </div>
     </div>`;
   }).join('');
+  container.innerHTML = sortHtml + itemsHtml;
   container.querySelectorAll('.test-entry').forEach(el =>
-    el.addEventListener('click',()=>openTestModal(parseInt(el.dataset.id)))
+    el.addEventListener('click',()=>openTestModal(el.dataset.id))
   );
 }
 
 function openTestModal(id) {
-  const e = state.tests.find(t=>t.id===id); if(!e) return;
+  const e = state.tests.find(t=>String(t.id)===String(id)); if(!e) return;
   const pct = Math.round(e.correct/e.total*100);
   const sc = pct>=70?'score-good':pct>=50?'score-mid':'score-low';
   document.getElementById('modalTitle').textContent='Detalle test';
@@ -1399,16 +1419,85 @@ function openTestModal(id) {
       <div><div style="font-size:14px;font-weight:600">${temaLabel(e)}</div>
       <div style="font-size:12px;color:var(--fg2);margin-top:3px">${fmtDate(e.date)} · ${e.correct}/${e.total} aciertos</div></div>
     </div>
-    ${e.notes?`<div style="background:var(--red-dim);border-radius:8px;padding:12px;font-size:13px">
+    ${e.notes?`<div style="background:var(--red-dim);border-radius:8px;padding:12px;font-size:13px;margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">❌ Preguntas falladas / notas</div>
       ${e.notes.replace(/\n/g,'<br>')}
-    </div>`:'<div style="font-size:13px;color:var(--fg3)">Sin notas de preguntas falladas</div>'}
-    <button class="btn btn-secondary" style="margin-top:14px;width:100%;color:var(--red)" onclick="deleteTest(${id})">Eliminar test</button>`;
+    </div>`:'<div style="font-size:13px;color:var(--fg3);margin-bottom:10px">Sin notas de preguntas falladas</div>'}
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-secondary" style="flex:1" onclick="openEditTest('${e.id}')">✏️ Editar</button>
+      <button class="btn btn-secondary" style="flex:1;color:var(--red)" onclick="deleteTest('${e.id}')">🗑 Eliminar</button>
+    </div>`;
   document.getElementById('testModal').style.display='flex';
 }
 
+function openEditTest(id) {
+  const e = state.tests.find(t=>String(t.id)===String(id)); if(!e) return;
+  document.getElementById('modalTitle').textContent='Editar test';
+  // Construir select de temas igual que el formulario principal
+  let optionsHtml = '<option value="">— Elige tema —</option>';
+  optionsHtml += '<optgroup label="📚 Parte específica">';
+  TEMAS.forEach(t => {
+    const val = 'E'+String(t.t).padStart(2,'0');
+    optionsHtml += `<option value="${val}"${e.tema===val?' selected':''}>${val} — ${t.nombre.substring(0,50)}</option>`;
+  });
+  optionsHtml += '</optgroup><optgroup label="📖 Parte general">';
+  TEMAS_GENERAL.forEach(t => {
+    optionsHtml += `<option value="${t.t}"${e.tema===t.t?' selected':''}>${t.t} — ${t.nombre.substring(0,50)}</option>`;
+  });
+  optionsHtml += '</optgroup>';
+
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label class="form-label">Fecha</label>
+        <input class="form-input" type="date" id="editDate" value="${e.date}">
+      </div>
+      <div>
+        <label class="form-label">Tema</label>
+        <select class="form-select" id="editTema">${optionsHtml}</select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label class="form-label">Aciertos</label>
+          <input class="form-input" type="number" id="editCorrect" value="${e.correct}" min="0">
+        </div>
+        <div style="flex:1">
+          <label class="form-label">Total</label>
+          <input class="form-input" type="number" id="editTotal" value="${e.total}" min="1">
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Notas</label>
+        <textarea class="form-input" id="editNotes" rows="3" style="resize:vertical">${e.notes||''}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-secondary" style="flex:1" onclick="openTestModal('${e.id}')">Cancelar</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveEditTest('${e.id}')">Guardar</button>
+      </div>
+    </div>`;
+}
+
+async function saveEditTest(id) {
+  const e = state.tests.find(t=>String(t.id)===String(id)); if(!e) return;
+  const date = document.getElementById('editDate').value;
+  const tema = document.getElementById('editTema').value;
+  const correct = parseInt(document.getElementById('editCorrect').value);
+  const total = parseInt(document.getElementById('editTotal').value);
+  const notes = document.getElementById('editNotes').value.trim();
+  if (!date||!tema||isNaN(correct)||isNaN(total)) return;
+  // Actualizar en estado local
+  e.date=date; e.tema=tema; e.correct=correct; e.total=total; e.notes=notes;
+  // Actualizar en Supabase
+  if (supabaseReady) {
+    try {
+      await db.from('tests').update({date,tema,correct,total,notes}).eq('id',id);
+    } catch(err) { console.warn('Error actualizando test:', err); }
+  }
+  closeModal(); renderTests(); renderResumen();
+}
+
 async function deleteTest(id) {
-  state.tests = state.tests.filter(t=>t.id!==id);
+  state.tests = state.tests.filter(t=>String(t.id)!==String(id));
   await deleteTestDB(id);
   closeModal(); renderTests(); renderResumen();
 }
