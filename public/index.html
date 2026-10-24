@@ -467,10 +467,11 @@
       <div class="card">
         <div class="card-header">
           <span class="card-title">Resultados práctica</span>
-          <div style="display:flex;gap:4px">
+          <div style="display:flex;gap:4px;align-items:center">
             <button class="btn btn-sm btn-primary" id="resTabIvap" onclick="switchResTab('bateria_ivap')" style="font-size:10px;padding:3px 8px">🔋 Batería</button>
             <button class="btn btn-sm btn-secondary" id="resTabApuntes" onclick="switchResTab('apuntes')" style="font-size:10px;padding:3px 8px">⚖️ General</button>
             <button class="btn btn-sm btn-secondary" id="resTabEspecifica" onclick="switchResTab('especifica')" style="font-size:10px;padding:3px 8px">📈 Específica</button>
+            <button class="btn btn-sm btn-secondary" id="resModeBtn" onclick="toggleResMode()" style="font-size:10px;padding:3px 8px">%</button>
           </div>
         </div>
         <div id="pracResultsTable"><div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Practica para ver tus resultados</div></div></div>
@@ -1749,6 +1750,13 @@ function renderResumen() {
 }
 
 let currentResTab = 'bateria_ivap';
+let resMode = 'pct'; // 'pct' | 'ratio'
+
+function toggleResMode() {
+  resMode = resMode === 'pct' ? 'ratio' : 'pct';
+  document.getElementById('resModeBtn').textContent = resMode === 'pct' ? '%' : 'n/n';
+  renderPracResultsTable(currentResTab);
+}
 
 function switchResTab(tab) {
   currentResTab = tab;
@@ -1794,9 +1802,14 @@ function renderPracResultsTable(fuente) {
 
   const cellStyle = (pct) => {
     if (pct === null) return 'background:transparent;color:var(--fg3)';
-    if (pct >= 80) return 'background:var(--green-dim);color:var(--green)';
-    if (pct >= 60) return 'background:var(--amber-dim);color:var(--amber)';
-    return 'background:var(--red-dim);color:var(--red)';
+    if (pct >= 90) return 'background:#d1fae5;color:#065f46';
+    if (pct >= 70) return 'background:#fef3c7;color:#92400e';
+    return 'background:#fee2e2;color:#991b1b';
+  };
+  const cellVal = (d) => {
+    if (!d) return '—';
+    if (resMode === 'ratio') return `${d.correct}/${d.total}`;
+    return Math.round(d.correct/d.total*100) + '%';
   };
 
   const isIvap = fuente === 'bateria_ivap';
@@ -1823,9 +1836,9 @@ function renderPracResultsTable(fuente) {
             ${months.map(m => {
               const d = stats[t]?.[m];
               const pct = d ? Math.round(d.correct/d.total*100) : null;
-              return `<td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;border-radius:4px;${cellStyle(pct)}">${pct !== null ? pct+'%' : '—'}</td>`;
+              return `<td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;border-radius:4px;${cellStyle(pct)}">${cellVal(d)}</td>`;
             }).join('')}
-            <td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;font-weight:600;${cellStyle(totalPct)}">${totalPct !== null ? totalPct+'%' : '—'}</td>
+            <td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;font-weight:600;${cellStyle(totalPct)}">${cellVal(totalTotal ? {correct:totalCorrect,total:totalTotal} : null)}</td>
           </tr>`;
         }).join('')}
       </tbody>
