@@ -885,15 +885,24 @@ async function syncAll() {
       {data: tests},
       {data: planSessions},
       {data: questions},
-      {data: practiceAnswers},
     ] = await Promise.all([
       db.from('topic_status').select('*'),
       db.from('sessions').select('*'),
       db.from('tests').select('*').order('date', {ascending:false}),
       db.from('plan_sessions').select('*').order('date', {ascending:true}).order('id', {ascending:true}),
       db.from('questions').select('*').order('tema', {ascending:true}).order('id', {ascending:true}),
-      db.from('practice_answers').select('*').limit(100000),
     ]);
+
+    // Paginar practice_answers de 1000 en 1000
+    let practiceAnswers = [];
+    let pagiOffset = 0;
+    while (true) {
+      const {data: batch, error} = await db.from('practice_answers').select('*').range(pagiOffset, pagiOffset + 999);
+      if (error || !batch || batch.length === 0) break;
+      practiceAnswers = practiceAnswers.concat(batch);
+      if (batch.length < 1000) break;
+      pagiOffset += 1000;
+    }
 
     state.topicStatus = {};
     if (statuses) statuses.forEach(r => { state.topicStatus[r.topic_num] = r.status; });
