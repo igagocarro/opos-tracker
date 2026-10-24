@@ -468,8 +468,9 @@
         <div class="card-header">
           <span class="card-title">Resultados práctica</span>
           <div style="display:flex;gap:4px">
-            <button class="btn btn-sm btn-primary" id="resTabIvap" onclick="switchResTab('ivap')" style="font-size:10px;padding:3px 8px">🔋 Batería</button>
-            <button class="btn btn-sm btn-secondary" id="resTabApuntes" onclick="switchResTab('apuntes')" style="font-size:10px;padding:3px 8px">📝 Apuntes</button>
+            <button class="btn btn-sm btn-primary" id="resTabIvap" onclick="switchResTab('bateria_ivap')" style="font-size:10px;padding:3px 8px">🔋 Batería</button>
+            <button class="btn btn-sm btn-secondary" id="resTabApuntes" onclick="switchResTab('apuntes')" style="font-size:10px;padding:3px 8px">⚖️ Apuntes</button>
+            <button class="btn btn-sm btn-secondary" id="resTabEspecifica" onclick="switchResTab('especifica')" style="font-size:10px;padding:3px 8px">📈 Específica</button>
           </div>
         </div>
         <div id="pracResultsTable"><div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Practica para ver tus resultados</div></div></div>
@@ -1738,18 +1739,19 @@ function renderResumen() {
   renderPracResultsTable(currentResTab || 'ivap');
 }
 
-let currentResTab = 'ivap';
+let currentResTab = 'bateria_ivap';
 
 function switchResTab(tab) {
   currentResTab = tab;
-  document.getElementById('resTabIvap').className = 'btn btn-sm' + (tab==='ivap' ? ' btn-primary' : ' btn-secondary');
+  document.getElementById('resTabIvap').className = 'btn btn-sm' + (tab==='bateria_ivap' ? ' btn-primary' : ' btn-secondary');
   document.getElementById('resTabApuntes').className = 'btn btn-sm' + (tab==='apuntes' ? ' btn-primary' : ' btn-secondary');
+  document.getElementById('resTabEspecifica').className = 'btn btn-sm' + (tab==='especifica' ? ' btn-primary' : ' btn-secondary');
   renderPracResultsTable(tab);
 }
 
 function renderPracResultsTable(fuente) {
   const el = document.getElementById('pracResultsTable');
-  const answers = state.practiceAnswers.filter(a => a.fuente === fuente);
+  const answers = state.practiceAnswers.filter(a => (a.fuente || 'bateria_ivap') === fuente);
   if (!answers.length) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Practica para ver tus resultados</div></div>';
     return;
@@ -1823,7 +1825,7 @@ function renderPracResultsTable(fuente) {
 }
 
 function showPracDrilldown(tema) {
-  const answers = state.practiceAnswers.filter(a => a.fuente === 'ivap' && a.tema === tema);
+  const answers = state.practiceAnswers.filter(a => (a.fuente || 'bateria_ivap') === 'bateria_ivap' && a.tema === tema);
   const questions = state.questions.filter(q => q.tema === tema);
   if (!questions.length) return;
 
@@ -1838,7 +1840,7 @@ function showPracDrilldown(tema) {
   const el = document.getElementById('pracResultsTable');
   el.innerHTML = `
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
-      <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderPracResultsTable('ivap')">← Volver</button>
+      <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderPracResultsTable('bateria_ivap')">← Volver</button>
       <span style="font-size:13px;font-weight:600">T${String(tema).padStart(2,'0')} — ${generalNombre(tema)}</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
@@ -2070,7 +2072,7 @@ function answerPrac(btn, correctIdxs) {
   // Actualizar state local para refrescar la tabla en Resumen sin esperar a Supabase
   const newAnswer = {
     question_id: id,
-    fuente: q.fuente || 'ivap',
+    fuente: q.fuente || 'bateria_ivap',
     tema: q.tema,
     correct: isCorrect,
     answered_at: new Date().toISOString(),
@@ -2082,7 +2084,7 @@ function answerPrac(btn, correctIdxs) {
   if (supabaseReady) {
     db.from('practice_answers').insert({
       question_id: id,
-      fuente: q.fuente || 'ivap',
+      fuente: q.fuente || 'bateria_ivap',
       tema: q.tema,
       correct: isCorrect,
     }).then(({error}) => { if (error) console.warn('Error guardando respuesta:', error); });
