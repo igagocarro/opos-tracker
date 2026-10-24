@@ -105,18 +105,18 @@
   .icon-btn.sync-ok { border-color: var(--green); color: var(--green); background: var(--green-dim); }
   .icon-btn.sync-err { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
 
-  /* Nav — 5 tabs */
-  .nav { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
+  /* Nav — 6 tabs */
+  .nav { display: grid; grid-template-columns: repeat(6, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
   .nav-btn {
-    padding: 10px 2px 8px;
+    padding: 8px 1px 7px;
     border: none; background: none; cursor: pointer;
-    color: var(--fg3); font-size: 9px; font-weight: 600;
-    letter-spacing: 0.04em; text-transform: uppercase;
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--fg3); font-size: 8px; font-weight: 600;
+    letter-spacing: 0.03em; text-transform: uppercase;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
     border-bottom: 2px solid transparent;
     transition: color .15s, border-color .15s;
   }
-  .nav-btn .nav-icon { font-size: 17px; line-height: 1; }
+  .nav-btn .nav-icon { font-size: 15px; line-height: 1; }
   .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .nav-btn:hover:not(.active) { color: var(--fg); }
 
@@ -798,32 +798,33 @@ const TEMAS = [
 /* ─── DATA — 26 TEMAS PARTE GENERAL (IVAP) ──────────── */
 /* NOTA: T17 Aurrerabide excluido explícitamente */
 const TEMAS_GENERAL = [
-  {t:"G01",nombre:"Constitución. Estructura y contenido. Derechos y deberes fundamentales",bloque:"Parte General"},
-  {t:"G02",nombre:"La organización territorial del Estado. Aspectos generales. Las comunidades autónomas; su organización y competencia. Los Estatutos de Autonomía",bloque:"Parte General"},
-  {t:"G03",nombre:"Derecho de la Unión Europea. Breve panorama de las instituciones: Consejo Europeo, Consejo de la Unión Europea, Comisión, Parlamento y Tribunal. Actos jurídicos: reglamentos y directiva",bloque:"Parte General"},
-  {t:"G04",nombre:"Organización política y administrativa de la CAE. Principios generales. Aspectos Generales de la distribución de competencias entre el Estado y la CAE. El Parlamento Vasco. El Gobierno Vasco y el Lehendakari",bloque:"Parte General"},
-  {t:"G05",nombre:"Aspectos generales de la distribución de competencias entre las Instituciones Comunes de la CAE y los Territorios Históricos. El concierto económico. Competencias de las Instituciones Locales",bloque:"Parte General"},
-  {t:"G06",nombre:"Igualdad: Contexto-antecedentes. Objeto y fin. Principios generales: Igualdad de trato; Igualdad de oportunidades; Respeto a la diversidad y a la diferencia; Integración de la perspectiva de género; Acción positiva; Eliminación de roles y estereotipos en función del sexo; Representación equilibrada; Colaboración y coordinación. Medidas para promover la igualdad en la normativa y actividad administrativa",bloque:"Parte General"},
-  {t:"G07",nombre:"Administración Electrónica. El acceso electrónico de los ciudadanos a los servicios públicos. El funcionamiento electrónico del sector público: sede electrónica y portal de internet, sistemas de identificación y firma electrónica. El archivo electrónico. El expediente administrativo",bloque:"Parte General"},
-  {t:"G08",nombre:"Normalización lingüística del uso del euskera en la administración general. Principios generales. El perfil lingüístico. La preceptividad de los perfiles lingüísticos. Los planes de normalización lingüística",bloque:"Parte General"},
-  {t:"G09",nombre:"Personal al servicio de las administraciones públicas vascas. Clases de empleados públicos. Derechos y deberes de los empleados públicos de las administraciones públicas vascas. Retribuciones. Régimen disciplinario",bloque:"Parte General"},
-  {t:"G10",nombre:"Aspectos básicos de la protección de datos personales: conceptos, principios y derechos",bloque:"Parte General"},
-  {t:"G11",nombre:"Prevención de riesgos laborales. Objeto. Derechos y obligaciones: derecho de protección frente a los riesgos laborales. Principios de la actividad preventiva. Plan de prevención, evaluación de riesgos y planificación de la actividad preventiva. Formación de los trabajadores",bloque:"Parte General"},
-  {t:"G12",nombre:"Prevención de riesgos laborales: Pantallas de visualización de datos",bloque:"Parte General"},
-  {t:"G13",nombre:"Nociones básicas de primeros auxilios",bloque:"Parte General"},
-  {t:"G14",nombre:"Gobierno abierto. Concepto y principios informadores. Acceso a la información pública y buen gobierno",bloque:"Parte General"},
-  {t:"G15",nombre:"El expediente administrativo. Documentos administrativos. La expedición de copias y certificaciones de documentos",bloque:"Organización y Gestión Administrativa"},
-  {t:"G16",nombre:"Legalizaciones de firmas. La validación en la administración electrónica: la identificación y firma electrónica, el certificado electrónico",bloque:"Organización y Gestión Administrativa"},
-  {t:"G18",nombre:"Derechos de la ciudadanía en sus relaciones con las Administraciones Públicas. Derecho de acceso a archivos y registros públicos",bloque:"Atención a la Ciudadanía"},
-  {t:"G19",nombre:"La comunicación en la Administración. Uso correcto del lenguaje administrativo. Comunicación escrita. Lenguaje administrativo no sexista. Contenido y presentación de documentos escritos: correspondencia, comunicaciones, autorizaciones, notificaciones, instancias, certificaciones, compulsas, etc.",bloque:"Atención a la Ciudadanía"},
-  {t:"G20",nombre:"Comunicación oral. Comunicación y atención en persona y por teléfono: avisos, información, peticiones, acompañamiento, desvío de llamadas, etc. Criterios generales. La comunicación no verbal",bloque:"Atención a la Ciudadanía"},
-  {t:"G21",nombre:"Fuentes del derecho administrativo: Ley y reglamento. Jerarquía normativa. Principio legalidad de la administración pública",bloque:"Procedimiento Administrativo"},
-  {t:"G22",nombre:"La organización administrativa: los órganos administrativos. Órganos colegiados",bloque:"Procedimiento Administrativo"},
-  {t:"G23",nombre:"El acto administrativo: concepto, producción, contenido, motivación y forma. La eficacia del acto administrativo. Silencio administrativo. Nulidad y anulabilidad",bloque:"Procedimiento Administrativo"},
-  {t:"G24",nombre:"Procedimiento administrativo: principios generales. Interesados. Abstención y recusación",bloque:"Procedimiento Administrativo"},
+  {t:"G01",nombre:"Constitución",bloque:"Parte General"},
+  {t:"G02",nombre:"Organización territorial del Estado",bloque:"Parte General"},
+  {t:"G03",nombre:"Derecho de la Unión Europea",bloque:"Parte General"},
+  {t:"G04",nombre:"Organización política y administrativa de la CAE",bloque:"Parte General"},
+  {t:"G05",nombre:"Distribución de competencias y concierto económico",bloque:"Parte General"},
+  {t:"G06",nombre:"Igualdad",bloque:"Parte General"},
+  {t:"G07",nombre:"Administración electrónica",bloque:"Parte General"},
+  {t:"G08",nombre:"Normalización lingüística del euskera",bloque:"Parte General"},
+  {t:"G09",nombre:"Personal al servicio de las administraciones públicas vascas",bloque:"Parte General"},
+  {t:"G10",nombre:"Protección de datos personales",bloque:"Parte General"},
+  {t:"G11",nombre:"Prevención de riesgos laborales",bloque:"Parte General"},
+  {t:"G12",nombre:"Pantallas de visualización de datos",bloque:"Parte General"},
+  {t:"G13",nombre:"Primeros auxilios",bloque:"Parte General"},
+  {t:"G14",nombre:"Gobierno abierto",bloque:"Parte General"},
+  {t:"G15",nombre:"Expediente administrativo",bloque:"Organización y Gestión Administrativa"},
+  {t:"G16",nombre:"Legalizaciones y firma electrónica",bloque:"Organización y Gestión Administrativa"},
+  {t:"G17",nombre:"Modelo AURRERABIDE",bloque:"Organización y Gestión Administrativa"},
+  {t:"G18",nombre:"Derechos de la ciudadanía",bloque:"Atención a la Ciudadanía"},
+  {t:"G19",nombre:"Comunicación administrativa escrita",bloque:"Atención a la Ciudadanía"},
+  {t:"G20",nombre:"Comunicación oral",bloque:"Atención a la Ciudadanía"},
+  {t:"G21",nombre:"Fuentes del derecho administrativo",bloque:"Procedimiento Administrativo"},
+  {t:"G22",nombre:"Organización administrativa",bloque:"Procedimiento Administrativo"},
+  {t:"G23",nombre:"Acto administrativo",bloque:"Procedimiento Administrativo"},
+  {t:"G24",nombre:"Procedimiento administrativo",bloque:"Procedimiento Administrativo"},
   {t:"G25",nombre:"Fases del procedimiento administrativo",bloque:"Procedimiento Administrativo"},
-  {t:"G26",nombre:"Revisión de los actos: recursos administrativos, revisión de oficio y revocación. Rectificación de errores materiales",bloque:"Procedimiento Administrativo"},
-  {t:"G27",nombre:"La responsabilidad de las Administraciones Públicas y sus autoridades y demás personal",bloque:"Procedimiento Administrativo"},
+  {t:"G26",nombre:"Revisión de actos administrativos",bloque:"Procedimiento Administrativo"},
+  {t:"G27",nombre:"Responsabilidad de las Administraciones Públicas",bloque:"Procedimiento Administrativo"},
 ];
 
 const PHASES = [
@@ -1757,19 +1758,36 @@ document.getElementById('syncBtn').addEventListener('click', () => {
 });
 
 /* ─── PRACTICAR ─────────────────────────────────────── */
-const TEMAS_GENERAL = {
-  1:"Constitución",2:"Organización territorial del Estado",3:"Derecho de la Unión Europea",
-  4:"Organización política y administrativa de la CAE",5:"Distribución de competencias y concierto económico",
-  6:"Igualdad",7:"Administración electrónica",8:"Normalización lingüística del euskera",
-  9:"Personal al servicio de las administraciones públicas vascas",10:"Protección de datos personales",
-  11:"Prevención de riesgos laborales",12:"Pantallas de visualización de datos",
-  13:"Organización y planificación del trabajo",14:"Régimen jurídico de las administraciones públicas (I)",
-  15:"Régimen jurídico de las administraciones públicas (II)",16:"El procedimiento administrativo común",
-  17:"Aurrerabide",18:"Estatuto de Autonomía",19:"Instituciones del País Vasco",
-  20:"Haciendas forales",21:"Contratos del sector público",22:"Patrimonio de las administraciones públicas",
-  23:"Subvenciones",24:"Presupuestos y control económico-financiero",
-  25:"Estadística oficial",26:"Protección del medio ambiente",27:"Seguridad de la información"
+const NOMBRES_GENERAL = {
+  1:"Constitución",
+  2:"Organización territorial del Estado",
+  3:"Derecho de la Unión Europea",
+  4:"Organización política y administrativa de la CAE",
+  5:"Distribución de competencias y concierto económico",
+  6:"Igualdad",
+  7:"Administración electrónica",
+  8:"Normalización lingüística del euskera",
+  9:"Personal al servicio de las administraciones públicas vascas",
+  10:"Protección de datos personales",
+  11:"Prevención de riesgos laborales",
+  12:"Pantallas de visualización de datos",
+  13:"Primeros auxilios",
+  14:"Gobierno abierto",
+  15:"Expediente administrativo",
+  16:"Legalizaciones y firma electrónica",
+  17:"Modelo AURRERABIDE",
+  18:"Derechos de la ciudadanía",
+  19:"Comunicación administrativa escrita",
+  20:"Comunicación oral",
+  21:"Fuentes del derecho administrativo",
+  22:"Organización administrativa",
+  23:"Acto administrativo",
+  24:"Procedimiento administrativo",
+  25:"Fases del procedimiento administrativo",
+  26:"Revisión de actos administrativos",
+  27:"Responsabilidad de las Administraciones Públicas",
 };
+function generalNombre(num) { return NOMBRES_GENERAL[num] || `Tema ${num}`; }
 
 let pracState = {
   pool: [],           // preguntas filtradas y ordenadas
@@ -1801,7 +1819,7 @@ function renderPracSetup() {
   sel.innerHTML = '<option value="all">Todos los temas</option>';
   const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'bateria_ivap').map(q => q.tema))].sort((a,b)=>a-b);
   temas.forEach(t => {
-    const name = TEMAS_GENERAL[t] ? `T${String(t).padStart(2,'0')} — ${TEMAS_GENERAL[t]}` : `Tema ${t}`;
+    const name = `T${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
     sel.innerHTML += `<option value="${t}">${name}</option>`;
   });
   sel.value = prev || 'all';
@@ -1874,7 +1892,7 @@ function showPracQuestion() {
   document.getElementById('pracFeedback').style.display = 'none';
   document.getElementById('pracProgress').textContent = `${pracState.idx + 1} / ${pracState.pool.length}`;
   document.getElementById('pracScore').textContent = `✅ ${pracState.correct} · ❌ ${pracState.total - pracState.correct}`;
-  document.getElementById('pracTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${TEMAS_GENERAL[q.tema] || ''}`;
+  document.getElementById('pracTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}`;
   document.getElementById('pracPregunta').textContent = q.pregunta;
 
   // opciones
