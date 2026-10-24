@@ -469,7 +469,7 @@
           <span class="card-title">Resultados práctica</span>
           <div style="display:flex;gap:4px">
             <button class="btn btn-sm btn-primary" id="resTabIvap" onclick="switchResTab('bateria_ivap')" style="font-size:10px;padding:3px 8px">🔋 Batería</button>
-            <button class="btn btn-sm btn-secondary" id="resTabApuntes" onclick="switchResTab('apuntes')" style="font-size:10px;padding:3px 8px">⚖️ Apuntes</button>
+            <button class="btn btn-sm btn-secondary" id="resTabApuntes" onclick="switchResTab('apuntes')" style="font-size:10px;padding:3px 8px">⚖️ General</button>
             <button class="btn btn-sm btn-secondary" id="resTabEspecifica" onclick="switchResTab('especifica')" style="font-size:10px;padding:3px 8px">📈 Específica</button>
           </div>
         </div>
@@ -1809,7 +1809,7 @@ function renderPracResultsTable(fuente) {
           const clickAttr = isIvap ? `onclick="showPracDrilldown(${t})" style="cursor:pointer"` : '';
           return `<tr>
             <td ${clickAttr} style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--fg);font-weight:500;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${generalNombre(t)}">
-              ${isIvap ? `<span style="color:var(--accent)">T${String(t).padStart(2,'0')}</span> ` : ''}${generalNombre(t).slice(0,18)}${generalNombre(t).length>18?'…':''}
+              T${String(t).padStart(2,'0')}
             </td>
             ${months.map(m => {
               const d = stats[t]?.[m];
