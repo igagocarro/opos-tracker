@@ -1789,6 +1789,16 @@ const NOMBRES_GENERAL = {
 };
 function generalNombre(num) { return NOMBRES_GENERAL[num] || `Tema ${num}`; }
 
+// Detecta si alguna opción hace referencia explícita a otra por letra (a), b)…)
+// En ese caso NO se barajan las opciones para no romper el sentido
+function hasOptionReferences(opciones) {
+  return opciones.some(opt =>
+    /respuesta[s]?\s+[a-d]\)/i.test(opt) ||
+    /opci[oó]n\s+[a-d]\)/i.test(opt) ||
+    /[a-d]\)\s+y\s+[a-d]\)/i.test(opt)
+  );
+}
+
 let pracState = {
   pool: [],           // preguntas filtradas y ordenadas
   idx: 0,             // pregunta actual
@@ -1900,7 +1910,13 @@ function showPracQuestion() {
   const shuffle = document.getElementById('pracShuffleOpts')?.checked ?? true;
   const letters = ['a','b','c','d','e','f'];
   let indices = opciones.map((_,i) => i);
-  if (shuffle) indices = indices.sort(() => Math.random() - 0.5);
+  if (shuffle && !hasOptionReferences(opciones)) {
+    // Fisher-Yates shuffle
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+  }
   pracState.shuffledOpts = indices;
 
   const correctasOrig = q.correctas; // ['a','b',...] referenciando posición original
