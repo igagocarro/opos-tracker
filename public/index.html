@@ -306,6 +306,27 @@
   .session-act-btn:hover { background: var(--surface2); color: var(--fg); }
   .session-act-btn.danger { color: var(--red); border-color: var(--red-dim); }
   .session-act-btn.danger:hover { background: var(--red-dim); }
+
+  /* ── PRACTICAR ── */
+  .prac-tab {
+    flex: 1; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--fg2); font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .prac-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .prac-subtab {
+    flex: 1; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--fg2); font-size: 12px; cursor: pointer;
+  }
+  .prac-subtab.active { background: var(--surface2); color: var(--fg); border-color: var(--accent); font-weight: 600; }
+  .prac-opt {
+    width: 100%; padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--fg); font-size: 14px; font-weight: 500;
+    text-align: left; cursor: pointer; transition: background 0.15s;
+  }
+  .prac-opt:hover:not(:disabled) { background: var(--surface2); }
+  .prac-opt.correct { background: var(--green-dim) !important; border-color: var(--green) !important; color: var(--green) !important; }
+  .prac-opt.wrong { background: var(--red-dim) !important; border-color: var(--red) !important; color: var(--red) !important; }
+  .prac-opt:disabled { cursor: default; }
   .test-entry { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; cursor: pointer; transition: background .12s; }
   .test-entry:last-child { border-bottom: none; }
   .test-entry:hover { background: var(--surface2); }
@@ -390,6 +411,7 @@
     <button class="nav-btn" data-view="temas"><span class="nav-icon">📚</span>Temas</button>
     <button class="nav-btn" data-view="fases"><span class="nav-icon">🎯</span>Fases</button>
     <button class="nav-btn" data-view="tests"><span class="nav-icon">✏️</span>Tests</button>
+    <button class="nav-btn" data-view="practicar"><span class="nav-icon">🧠</span>Practicar</button>
   </nav>
 
   <!-- Main -->
@@ -535,6 +557,115 @@
       <div class="card">
         <div class="card-header"><span class="card-title" id="testListTitle">Historial de tests</span></div>
         <div id="testsList"><div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Guarda tu primer test arriba</div></div></div>
+      </div>
+    </div>
+
+    <!-- PRACTICAR -->
+    <div class="view" id="view-practicar">
+      <!-- Tabs principales: General / Específica -->
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="prac-tab active" data-ptab="general" onclick="switchPracTab('general')">⚖️ General</button>
+        <button class="prac-tab" data-ptab="especifica" onclick="switchPracTab('especifica')">📈 Específica</button>
+      </div>
+
+      <!-- General -->
+      <div id="ptab-general">
+        <!-- Subtabs -->
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="prac-subtab active" data-subtab="bateria" onclick="switchPracSubtab('bateria')">🔋 Batería IVAP</button>
+          <button class="prac-subtab" data-subtab="apuntes" onclick="switchPracSubtab('apuntes')">⚖️ Mis apuntes</button>
+        </div>
+
+        <!-- Batería IVAP -->
+        <div id="psubtab-bateria">
+          <div class="card" id="pracSetupCard">
+            <div class="card-header"><span class="card-title">Configurar práctica</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label class="form-label">Tema</label>
+                <select class="form-select" id="pracTemaSelect" onchange="renderPracStats()">
+                  <option value="all">Todos los temas</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px">
+                <div style="flex:1">
+                  <label class="form-label">Orden</label>
+                  <select class="form-select" id="pracOrderSelect">
+                    <option value="random">Aleatorio</option>
+                    <option value="sequential">Secuencial</option>
+                    <option value="worst">Peores %</option>
+                    <option value="least">Menos respondidas</option>
+                  </select>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:6px;padding-top:22px">
+                  <label style="font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer">
+                    <input type="checkbox" id="pracShuffleOpts" checked> Barajar opciones
+                  </label>
+                  <label style="font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer">
+                    <input type="checkbox" id="pracExcT17" checked> Excluir T17
+                  </label>
+                </div>
+              </div>
+              <div id="pracStatsLine" style="font-size:12px;color:var(--fg3)"></div>
+              <button class="btn btn-primary" onclick="startPrac()">▶ Empezar</button>
+            </div>
+          </div>
+
+          <!-- Zona de pregunta -->
+          <div id="pracQuestionZone" style="display:none">
+            <div class="card">
+              <div class="card-body">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <span style="font-size:12px;color:var(--fg3)" id="pracProgress"></span>
+                  <span style="font-size:12px;font-weight:600" id="pracScore"></span>
+                </div>
+                <div style="font-size:12px;color:var(--fg2);margin-bottom:6px" id="pracTemaBadge"></div>
+                <p style="font-size:15px;font-weight:600;line-height:1.5;margin-bottom:14px" id="pracPregunta"></p>
+                <div id="pracOpciones" style="display:flex;flex-direction:column;gap:8px"></div>
+                <div id="pracFeedback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:13px"></div>
+                <div style="display:flex;gap:8px;margin-top:14px">
+                  <button class="btn btn-secondary" style="flex:1" onclick="stopPrac()">✕ Salir</button>
+                  <button class="btn btn-primary" style="flex:1" id="pracNextBtn" onclick="nextPracQuestion()" disabled>Siguiente →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resultado final -->
+          <div id="pracResultZone" style="display:none">
+            <div class="card">
+              <div class="card-body" style="text-align:center;padding:24px 16px">
+                <div style="font-size:48px;margin-bottom:8px" id="pracResultEmoji"></div>
+                <div style="font-size:28px;font-weight:700;margin-bottom:4px" id="pracResultPct"></div>
+                <div style="font-size:13px;color:var(--fg2);margin-bottom:20px" id="pracResultDetail"></div>
+                <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="startPrac()">🔄 Repetir</button>
+                <button class="btn btn-secondary" style="width:100%" onclick="stopPrac()">← Configurar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mis apuntes -->
+        <div id="psubtab-apuntes" style="display:none">
+          <div class="card">
+            <div class="card-body" style="text-align:center;padding:32px 16px">
+              <div style="font-size:40px;margin-bottom:12px">📓</div>
+              <div style="font-weight:600;margin-bottom:8px">Próximamente</div>
+              <div style="font-size:13px;color:var(--fg2)">Aquí aparecerán las preguntas generadas desde tus apuntes en NotebookLM.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Específica -->
+      <div id="ptab-especifica" style="display:none">
+        <div class="card">
+          <div class="card-body" style="text-align:center;padding:32px 16px">
+            <div style="font-size:40px;margin-bottom:12px">📈</div>
+            <div style="font-weight:600;margin-bottom:8px">Próximamente</div>
+            <div style="font-size:13px;color:var(--fg2)">Aquí aparecerán las preguntas de la parte específica.</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -737,7 +868,7 @@ const WEEK_PLAN = [
 /* ─── STATE ─────────────────────────────────────────── */
 // Supabase es la única fuente de verdad. Sin localStorage para datos.
 // topicStatus keys: numeric 1-58 para específica, "G01"-"G27" para general
-let state = { topicStatus:{}, sessions:{}, tests:[], planSessions:[] };
+let state = { topicStatus:{}, sessions:{}, tests:[], planSessions:[], questions:[] };
 
 /* ─── SUPABASE SYNC ─────────────────────────────────── */
 async function syncAll() {
@@ -749,11 +880,13 @@ async function syncAll() {
       {data: sessions},
       {data: tests},
       {data: planSessions},
+      {data: questions},
     ] = await Promise.all([
       db.from('topic_status').select('*'),
       db.from('sessions').select('*'),
       db.from('tests').select('*').order('date', {ascending:false}),
       db.from('plan_sessions').select('*').order('date', {ascending:true}).order('id', {ascending:true}),
+      db.from('questions').select('*').order('tema', {ascending:true}).order('id', {ascending:true}),
     ]);
 
     state.topicStatus = {};
@@ -764,11 +897,13 @@ async function syncAll() {
 
     state.tests = tests || [];
     state.planSessions = planSessions || [];
+    state.questions = questions || [];
 
     setSyncBtn('ok');
     renderResumen();
     renderTemas();
     renderTests();
+    renderPracSetup();
     if (document.getElementById('view-semana').classList.contains('active')) renderWeek();
   } catch(e) {
     console.warn('syncAll error:', e);
@@ -841,6 +976,7 @@ function switchView(id) {
   if (id === 'tests') renderTests();
   if (id === 'resumen') renderResumen();
   if (id === 'fases') renderFases();
+  if (id === 'practicar') renderPracSetup();
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
 
@@ -1619,6 +1755,200 @@ document.getElementById('syncBtn').addEventListener('click', () => {
     document.getElementById('testModal').style.display='flex';
   }
 });
+
+/* ─── PRACTICAR ─────────────────────────────────────── */
+const TEMAS_GENERAL = {
+  1:"Constitución",2:"Organización territorial del Estado",3:"Derecho de la Unión Europea",
+  4:"Organización política y administrativa de la CAE",5:"Distribución de competencias y concierto económico",
+  6:"Igualdad",7:"Administración electrónica",8:"Normalización lingüística del euskera",
+  9:"Personal al servicio de las administraciones públicas vascas",10:"Protección de datos personales",
+  11:"Prevención de riesgos laborales",12:"Pantallas de visualización de datos",
+  13:"Organización y planificación del trabajo",14:"Régimen jurídico de las administraciones públicas (I)",
+  15:"Régimen jurídico de las administraciones públicas (II)",16:"El procedimiento administrativo común",
+  17:"Aurrerabide",18:"Estatuto de Autonomía",19:"Instituciones del País Vasco",
+  20:"Haciendas forales",21:"Contratos del sector público",22:"Patrimonio de las administraciones públicas",
+  23:"Subvenciones",24:"Presupuestos y control económico-financiero",
+  25:"Estadística oficial",26:"Protección del medio ambiente",27:"Seguridad de la información"
+};
+
+let pracState = {
+  pool: [],           // preguntas filtradas y ordenadas
+  idx: 0,             // pregunta actual
+  correct: 0,
+  total: 0,
+  answered: false,
+  answers: {},        // question_id → {correct, ts}
+  currentQ: null,
+  shuffledOpts: [],   // opciones en orden mostrado
+};
+
+function switchPracTab(tab) {
+  document.querySelectorAll('.prac-tab').forEach(b => b.classList.toggle('active', b.dataset.ptab === tab));
+  document.getElementById('ptab-general').style.display = tab === 'general' ? '' : 'none';
+  document.getElementById('ptab-especifica').style.display = tab === 'especifica' ? '' : 'none';
+}
+
+function switchPracSubtab(sub) {
+  document.querySelectorAll('.prac-subtab').forEach(b => b.classList.toggle('active', b.dataset.subtab === sub));
+  document.getElementById('psubtab-bateria').style.display = sub === 'bateria' ? '' : 'none';
+  document.getElementById('psubtab-apuntes').style.display = sub === 'apuntes' ? '' : 'none';
+}
+
+function renderPracSetup() {
+  const sel = document.getElementById('pracTemaSelect');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Todos los temas</option>';
+  const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'bateria_ivap').map(q => q.tema))].sort((a,b)=>a-b);
+  temas.forEach(t => {
+    const name = TEMAS_GENERAL[t] ? `T${String(t).padStart(2,'0')} — ${TEMAS_GENERAL[t]}` : `Tema ${t}`;
+    sel.innerHTML += `<option value="${t}">${name}</option>`;
+  });
+  sel.value = prev || 'all';
+  renderPracStats();
+}
+
+function renderPracStats() {
+  const el = document.getElementById('pracStatsLine');
+  if (!el) return;
+  const pool = buildPool();
+  const answered = pool.filter(q => pracState.answers[q.id]);
+  const pct = answered.length ? Math.round(answered.filter(q => pracState.answers[q.id]?.correct).length / answered.length * 100) : null;
+  el.textContent = `${pool.length} preguntas${pct !== null ? ` · ${pct}% acierto (${answered.length} respondidas)` : ''}`;
+}
+
+function buildPool() {
+  const qs = state.questions || [];
+  const temaVal = document.getElementById('pracTemaSelect')?.value || 'all';
+  const exclT17 = document.getElementById('pracExcT17')?.checked ?? true;
+  const order = document.getElementById('pracOrderSelect')?.value || 'random';
+
+  let pool = qs.filter(q => q.fuente === 'bateria_ivap');
+  if (exclT17) pool = pool.filter(q => q.tema !== 17);
+  if (temaVal !== 'all') pool = pool.filter(q => String(q.tema) === String(temaVal));
+
+  if (order === 'sequential') {
+    pool.sort((a,b) => a.tema - b.tema || a.id - b.id);
+  } else if (order === 'worst') {
+    pool.sort((a,b) => {
+      const pa = pracState.answers[a.id];
+      const pb = pracState.answers[b.id];
+      const ra = pa ? (pa.correct / pa.total) : -1;
+      const rb = pb ? (pb.correct / pb.total) : -1;
+      return ra - rb;
+    });
+  } else if (order === 'least') {
+    pool.sort((a,b) => {
+      const ta = pracState.answers[a.id]?.total || 0;
+      const tb = pracState.answers[b.id]?.total || 0;
+      return ta - tb;
+    });
+  } else {
+    // random
+    pool = pool.slice().sort(() => Math.random() - 0.5);
+  }
+  return pool;
+}
+
+function startPrac() {
+  const pool = buildPool();
+  if (!pool.length) { alert('No hay preguntas con esos filtros.'); return; }
+  pracState.pool = pool;
+  pracState.idx = 0;
+  pracState.correct = 0;
+  pracState.total = 0;
+  pracState.answered = false;
+  document.getElementById('pracSetupCard').style.display = 'none';
+  document.getElementById('pracResultZone').style.display = 'none';
+  document.getElementById('pracQuestionZone').style.display = '';
+  showPracQuestion();
+}
+
+function showPracQuestion() {
+  if (pracState.idx >= pracState.pool.length) { showPracResult(); return; }
+  const q = pracState.pool[pracState.idx];
+  pracState.currentQ = q;
+  pracState.answered = false;
+
+  document.getElementById('pracNextBtn').disabled = true;
+  document.getElementById('pracFeedback').style.display = 'none';
+  document.getElementById('pracProgress').textContent = `${pracState.idx + 1} / ${pracState.pool.length}`;
+  document.getElementById('pracScore').textContent = `✅ ${pracState.correct} · ❌ ${pracState.total - pracState.correct}`;
+  document.getElementById('pracTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${TEMAS_GENERAL[q.tema] || ''}`;
+  document.getElementById('pracPregunta').textContent = q.pregunta;
+
+  // opciones
+  const opciones = q.opciones;
+  const shuffle = document.getElementById('pracShuffleOpts')?.checked ?? true;
+  const letters = ['a','b','c','d','e','f'];
+  let indices = opciones.map((_,i) => i);
+  if (shuffle) indices = indices.sort(() => Math.random() - 0.5);
+  pracState.shuffledOpts = indices;
+
+  const correctasOrig = q.correctas; // ['a','b',...] referenciando posición original
+  const correctIdxs = correctasOrig.map(l => letters.indexOf(l));
+
+  document.getElementById('pracOpciones').innerHTML = indices.map((origIdx, displayIdx) => {
+    const letter = letters[displayIdx];
+    return `<button class="prac-opt" data-orig="${origIdx}" data-letter="${letter}" onclick="answerPrac(this, ${JSON.stringify(correctIdxs)})">${letters[displayIdx].toUpperCase()}) ${opciones[origIdx]}</button>`;
+  }).join('');
+}
+
+function answerPrac(btn, correctIdxs) {
+  if (pracState.answered) return;
+  pracState.answered = true;
+
+  const origIdx = parseInt(btn.dataset.orig);
+  const isCorrect = correctIdxs.includes(origIdx);
+
+  // marcar todas las opciones
+  document.querySelectorAll('.prac-opt').forEach(b => {
+    b.disabled = true;
+    const bOrig = parseInt(b.dataset.orig);
+    if (correctIdxs.includes(bOrig)) b.classList.add('correct');
+    else if (b === btn && !isCorrect) b.classList.add('wrong');
+  });
+
+  if (isCorrect) pracState.correct++;
+  pracState.total++;
+
+  // guardar en local (sin Supabase por ahora — se puede añadir)
+  const id = pracState.currentQ.id;
+  if (!pracState.answers[id]) pracState.answers[id] = { correct: 0, total: 0 };
+  pracState.answers[id].total++;
+  if (isCorrect) pracState.answers[id].correct++;
+
+  // feedback
+  const fb = document.getElementById('pracFeedback');
+  fb.style.display = '';
+  fb.style.background = isCorrect ? 'var(--green-dim)' : 'var(--red-dim)';
+  fb.style.color = isCorrect ? 'var(--green)' : 'var(--red)';
+  fb.textContent = isCorrect ? '✅ ¡Correcto!' : `❌ Incorrecto. La respuesta correcta es: ${pracState.currentQ.opciones.filter((_,i) => correctIdxs.includes(i)).join(' / ')}`;
+
+  document.getElementById('pracNextBtn').disabled = false;
+  document.getElementById('pracScore').textContent = `✅ ${pracState.correct} · ❌ ${pracState.total - pracState.correct}`;
+}
+
+function nextPracQuestion() {
+  pracState.idx++;
+  showPracQuestion();
+}
+
+function showPracResult() {
+  document.getElementById('pracQuestionZone').style.display = 'none';
+  document.getElementById('pracResultZone').style.display = '';
+  const pct = pracState.total ? Math.round(pracState.correct / pracState.total * 100) : 0;
+  document.getElementById('pracResultEmoji').textContent = pct >= 70 ? '🎉' : pct >= 50 ? '💪' : '📖';
+  document.getElementById('pracResultPct').textContent = `${pct}%`;
+  document.getElementById('pracResultDetail').textContent = `${pracState.correct} correctas de ${pracState.total} preguntas`;
+}
+
+function stopPrac() {
+  document.getElementById('pracQuestionZone').style.display = 'none';
+  document.getElementById('pracResultZone').style.display = 'none';
+  document.getElementById('pracSetupCard').style.display = '';
+  renderPracStats();
+}
 
 /* ─── SERVICE WORKER ─────────────────────────────────── */
 if ('serviceWorker' in navigator) {
