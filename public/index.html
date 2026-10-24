@@ -978,7 +978,7 @@ function switchView(id) {
   document.querySelector(`[data-view="${id}"]`).classList.add('active');
   if (id === 'semana') renderWeek();
   if (id === 'temas') renderTemas();
-  if (id === 'resumen') renderResumen();
+  if (id === 'resumen') { syncAll(); renderResumen(); }
   if (id === 'fases') renderFases();
   if (id === 'practicar') renderPracSetup();
 }
@@ -2067,6 +2067,18 @@ function answerPrac(btn, correctIdxs) {
   if (!pracState.answers[id]) pracState.answers[id] = { correct: 0, total: 0 };
   pracState.answers[id].total++;
   if (isCorrect) pracState.answers[id].correct++;
+  // Actualizar state local para refrescar la tabla en Resumen sin esperar a Supabase
+  const newAnswer = {
+    question_id: id,
+    fuente: q.fuente || 'ivap',
+    tema: q.tema,
+    correct: isCorrect,
+    answered_at: new Date().toISOString(),
+  };
+  state.practiceAnswers.push(newAnswer);
+  if (document.getElementById('pracResultsTable')) renderPracResultsTable(currentResTab || 'ivap');
+
+  // Persistir en Supabase (fire & forget)
   if (supabaseReady) {
     db.from('practice_answers').insert({
       question_id: id,
