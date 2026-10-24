@@ -105,8 +105,8 @@
   .icon-btn.sync-ok { border-color: var(--green); color: var(--green); background: var(--green-dim); }
   .icon-btn.sync-err { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
 
-  /* Nav — 6 tabs */
-  .nav { display: grid; grid-template-columns: repeat(6, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
+  /* Nav — 5 tabs */
+  .nav { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
   .nav-btn {
     padding: 8px 1px 7px;
     border: none; background: none; cursor: pointer;
@@ -410,7 +410,6 @@
     <button class="nav-btn" data-view="semana"><span class="nav-icon">📅</span>Semana</button>
     <button class="nav-btn" data-view="temas"><span class="nav-icon">📚</span>Temas</button>
     <button class="nav-btn" data-view="fases"><span class="nav-icon">🎯</span>Fases</button>
-    <button class="nav-btn" data-view="tests"><span class="nav-icon">✏️</span>Tests</button>
     <button class="nav-btn" data-view="practicar"><span class="nav-icon">🧠</span>Practicar</button>
   </nav>
 
@@ -467,10 +466,13 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <span class="card-title">Últimos tests</span>
-          <button class="btn btn-secondary" style="padding:4px 10px;font-size:11px" onclick="switchView('tests')">Ver todos</button>
+          <span class="card-title">Resultados práctica</span>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm btn-primary" id="resTabIvap" onclick="switchResTab('ivap')" style="font-size:10px;padding:3px 8px">🔋 Batería</button>
+            <button class="btn btn-sm btn-secondary" id="resTabApuntes" onclick="switchResTab('apuntes')" style="font-size:10px;padding:3px 8px">📝 Apuntes</button>
+          </div>
         </div>
-        <div id="lastTests"><div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Todavía no hay tests guardados</div></div></div>
+        <div id="pracResultsTable"><div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Practica para ver tus resultados</div></div></div>
       </div>
     </div>
 
@@ -869,7 +871,7 @@ const WEEK_PLAN = [
 /* ─── STATE ─────────────────────────────────────────── */
 // Supabase es la única fuente de verdad. Sin localStorage para datos.
 // topicStatus keys: numeric 1-58 para específica, "G01"-"G27" para general
-let state = { topicStatus:{}, sessions:{}, tests:[], planSessions:[], questions:[] };
+let state = { topicStatus:{}, sessions:{}, tests:[], planSessions:[], questions:[], practiceAnswers:[] };
 
 /* ─── SUPABASE SYNC ─────────────────────────────────── */
 async function syncAll() {
@@ -882,12 +884,14 @@ async function syncAll() {
       {data: tests},
       {data: planSessions},
       {data: questions},
+      {data: practiceAnswers},
     ] = await Promise.all([
       db.from('topic_status').select('*'),
       db.from('sessions').select('*'),
       db.from('tests').select('*').order('date', {ascending:false}),
       db.from('plan_sessions').select('*').order('date', {ascending:true}).order('id', {ascending:true}),
       db.from('questions').select('*').order('tema', {ascending:true}).order('id', {ascending:true}),
+      db.from('practice_answers').select('*'),
     ]);
 
     state.topicStatus = {};
@@ -899,11 +903,11 @@ async function syncAll() {
     state.tests = tests || [];
     state.planSessions = planSessions || [];
     state.questions = questions || [];
+    state.practiceAnswers = practiceAnswers || [];
 
     setSyncBtn('ok');
     renderResumen();
     renderTemas();
-    renderTests();
     renderPracSetup();
     if (document.getElementById('view-semana').classList.contains('active')) renderWeek();
   } catch(e) {
@@ -974,7 +978,6 @@ function switchView(id) {
   document.querySelector(`[data-view="${id}"]`).classList.add('active');
   if (id === 'semana') renderWeek();
   if (id === 'temas') renderTemas();
-  if (id === 'tests') renderTests();
   if (id === 'resumen') renderResumen();
   if (id === 'fases') renderFases();
   if (id === 'practicar') renderPracSetup();
@@ -1731,14 +1734,126 @@ function renderResumen() {
   });
   document.getElementById('weekSessions').innerHTML=sessionLines.length?sessionLines.join(''):'<div style="font-size:12px;color:var(--fg3)">Marca sesiones en la vista Semana</div>';
 
-  // Last tests
-  const lastTestsEl=document.getElementById('lastTests');
-  if (!state.tests.length) { lastTestsEl.innerHTML='<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Todavía no hay tests guardados</div></div>'; return; }
-  lastTestsEl.innerHTML=state.tests.slice(0,3).map(e=>{
-    const pct=Math.round(e.correct/e.total*100);
-    const sc=pct>=70?'score-good':pct>=50?'score-mid':'score-low';
-    return `<div class="test-entry"><div class="test-score-box ${sc}">${pct}%</div><div class="test-details"><div class="test-title">${temaLabel(e)}</div><div class="test-meta">${fmtDate(e.date)} · ${e.correct}/${e.total}</div></div></div>`;
-  }).join('');
+  // Tabla de resultados de práctica
+  renderPracResultsTable(currentResTab || 'ivap');
+}
+
+let currentResTab = 'ivap';
+
+function switchResTab(tab) {
+  currentResTab = tab;
+  document.getElementById('resTabIvap').className = 'btn btn-sm' + (tab==='ivap' ? ' btn-primary' : ' btn-secondary');
+  document.getElementById('resTabApuntes').className = 'btn btn-sm' + (tab==='apuntes' ? ' btn-primary' : ' btn-secondary');
+  renderPracResultsTable(tab);
+}
+
+function renderPracResultsTable(fuente) {
+  const el = document.getElementById('pracResultsTable');
+  const answers = state.practiceAnswers.filter(a => a.fuente === fuente);
+  if (!answers.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Practica para ver tus resultados</div></div>';
+    return;
+  }
+
+  // Agrupar por mes
+  const months = [...new Set(answers.map(a => a.answered_at.slice(0,7)))].sort();
+
+  // Temas según fuente
+  const temas = Array.from({length: 27}, (_,i) => i+1); // T01-T27 para general
+
+  // Calcular stats por tema y mes
+  const stats = {}; // tema → mes → {correct, total}
+  answers.forEach(a => {
+    const mes = a.answered_at.slice(0,7);
+    const t = a.tema;
+    if (!stats[t]) stats[t] = {};
+    if (!stats[t][mes]) stats[t][mes] = {correct:0, total:0};
+    stats[t][mes].total++;
+    if (a.correct) stats[t][mes].correct++;
+  });
+
+  // Solo mostrar temas con datos
+  const temasConDatos = temas.filter(t => stats[t]);
+  if (!temasConDatos.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Practica para ver tus resultados</div></div>';
+    return;
+  }
+
+  const fmtMes = m => { const [y,mo] = m.split('-'); const names=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return `${names[+mo]}'${y.slice(2)}`; };
+
+  const cellStyle = (pct) => {
+    if (pct === null) return 'background:transparent;color:var(--fg3)';
+    if (pct >= 80) return 'background:var(--green-dim);color:var(--green)';
+    if (pct >= 60) return 'background:var(--amber-dim);color:var(--amber)';
+    return 'background:var(--red-dim);color:var(--red)';
+  };
+
+  const isIvap = fuente === 'ivap';
+
+  el.innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:280px">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border);color:var(--fg2);font-weight:600">Tema</th>
+          ${months.map(m => `<th style="padding:4px 4px;border-bottom:1px solid var(--border);color:var(--fg2);font-weight:600;text-align:center">${fmtMes(m)}</th>`).join('')}
+          <th style="padding:4px 4px;border-bottom:1px solid var(--border);color:var(--fg2);font-weight:600;text-align:center">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${temasConDatos.map(t => {
+          const totalCorrect = Object.values(stats[t]||{}).reduce((s,v)=>s+v.correct,0);
+          const totalTotal = Object.values(stats[t]||{}).reduce((s,v)=>s+v.total,0);
+          const totalPct = totalTotal ? Math.round(totalCorrect/totalTotal*100) : null;
+          const clickAttr = isIvap ? `onclick="showPracDrilldown(${t})" style="cursor:pointer"` : '';
+          return `<tr>
+            <td ${clickAttr} style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--fg);font-weight:500;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${generalNombre(t)}">
+              ${isIvap ? `<span style="color:var(--accent)">T${String(t).padStart(2,'0')}</span> ` : ''}${generalNombre(t).slice(0,18)}${generalNombre(t).length>18?'…':''}
+            </td>
+            ${months.map(m => {
+              const d = stats[t]?.[m];
+              const pct = d ? Math.round(d.correct/d.total*100) : null;
+              return `<td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;border-radius:4px;${cellStyle(pct)}">${pct !== null ? pct+'%' : '—'}</td>`;
+            }).join('')}
+            <td style="padding:3px 4px;border-bottom:1px solid var(--border);text-align:center;font-weight:600;${cellStyle(totalPct)}">${totalPct !== null ? totalPct+'%' : '—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function showPracDrilldown(tema) {
+  const answers = state.practiceAnswers.filter(a => a.fuente === 'ivap' && a.tema === tema);
+  const questions = state.questions.filter(q => q.tema === tema);
+  if (!questions.length) return;
+
+  // Stats por pregunta
+  const qStats = {};
+  answers.forEach(a => {
+    if (!qStats[a.question_id]) qStats[a.question_id] = {correct:0,total:0};
+    qStats[a.question_id].total++;
+    if (a.correct) qStats[a.question_id].correct++;
+  });
+
+  const el = document.getElementById('pracResultsTable');
+  el.innerHTML = `
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
+      <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderPracResultsTable('ivap')">← Volver</button>
+      <span style="font-size:13px;font-weight:600">T${String(tema).padStart(2,'0')} — ${generalNombre(tema)}</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      ${questions.map((q,i) => {
+        const s = qStats[q.id];
+        const pct = s ? Math.round(s.correct/s.total*100) : null;
+        const bg = pct===null ? 'var(--surface2)' : pct>=80 ? 'var(--green-dim)' : pct>=60 ? 'var(--amber-dim)' : 'var(--red-dim)';
+        const fg = pct===null ? 'var(--fg3)' : pct>=80 ? 'var(--green)' : pct>=60 ? 'var(--amber)' : 'var(--red)';
+        return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border)">
+          <span style="font-size:10px;color:var(--fg3);min-width:20px;padding-top:1px">#${i+1}</span>
+          <span style="flex:1;font-size:12px;color:var(--fg);line-height:1.4">${q.pregunta.slice(0,80)}${q.pregunta.length>80?'…':''}</span>
+          <span style="min-width:36px;text-align:center;font-size:11px;font-weight:700;color:${fg};background:${bg};border-radius:6px;padding:2px 5px">${pct!==null ? pct+'%' : '—'}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
 }
 
 
@@ -1946,11 +2061,20 @@ function answerPrac(btn, correctIdxs) {
   if (isCorrect) pracState.correct++;
   pracState.total++;
 
-  // guardar en local (sin Supabase por ahora — se puede añadir)
-  const id = pracState.currentQ.id;
+  // guardar en Supabase (fire & forget)
+  const q = pracState.currentQ;
+  const id = q.id;
   if (!pracState.answers[id]) pracState.answers[id] = { correct: 0, total: 0 };
   pracState.answers[id].total++;
   if (isCorrect) pracState.answers[id].correct++;
+  if (supabaseReady) {
+    db.from('practice_answers').insert({
+      question_id: id,
+      fuente: q.fuente || 'ivap',
+      tema: q.tema,
+      correct: isCorrect,
+    }).then(({error}) => { if (error) console.warn('Error guardando respuesta:', error); });
+  }
 
   // feedback
   const fb = document.getElementById('pracFeedback');
