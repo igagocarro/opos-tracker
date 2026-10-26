@@ -651,11 +651,75 @@
 
         <!-- Mis apuntes -->
         <div id="psubtab-apuntes" style="display:none">
-          <div class="card">
-            <div class="card-body" style="text-align:center;padding:32px 16px">
-              <div style="font-size:40px;margin-bottom:12px">📓</div>
-              <div style="font-weight:600;margin-bottom:8px">Próximamente</div>
-              <div style="font-size:13px;color:var(--fg2)">Aquí aparecerán las preguntas generadas desde tus apuntes en NotebookLM.</div>
+          <div class="card" id="apuntesSetupCard">
+            <div class="card-header"><span class="card-title">Configurar práctica</span></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label class="form-label">Tema</label>
+                <select class="form-select" id="apuntesTemaSelect" onchange="renderApuntesStats()">
+                  <option value="all">Todos los temas</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:8px">
+                <div style="flex:1">
+                  <label class="form-label">Dificultad</label>
+                  <select class="form-select" id="apuntesDifSelect" onchange="renderApuntesStats()">
+                    <option value="all">Todas</option>
+                    <option value="facil">Fácil</option>
+                    <option value="media">Media</option>
+                    <option value="dificil">Difícil</option>
+                  </select>
+                </div>
+                <div style="flex:1">
+                  <label class="form-label">Orden</label>
+                  <select class="form-select" id="apuntesOrderSelect">
+                    <option value="random">Aleatorio</option>
+                    <option value="sequential">Secuencial</option>
+                    <option value="worst">Peores %</option>
+                    <option value="least">Menos respondidas</option>
+                  </select>
+                </div>
+              </div>
+              <div style="padding-top:2px">
+                <label style="font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer">
+                  <input type="checkbox" id="apuntesShuffleOpts" checked> Barajar opciones
+                </label>
+              </div>
+              <div id="apuntesStatsLine" style="font-size:12px;color:var(--fg3)"></div>
+              <button class="btn btn-primary" onclick="startApuntes()">▶ Empezar</button>
+            </div>
+          </div>
+
+          <!-- Zona de pregunta -->
+          <div id="apuntesQuestionZone" style="display:none">
+            <div class="card">
+              <div class="card-body">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                  <span style="font-size:12px;color:var(--fg3)" id="apuntesProgress"></span>
+                  <span style="font-size:12px;font-weight:600" id="apuntesScore"></span>
+                </div>
+                <div style="font-size:12px;color:var(--fg2);margin-bottom:6px" id="apuntesTemaBadge"></div>
+                <p style="font-size:15px;font-weight:600;line-height:1.5;margin-bottom:14px" id="apuntesPregunta"></p>
+                <div id="apuntesOpciones" style="display:flex;flex-direction:column;gap:8px"></div>
+                <div id="apuntesFeedback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:13px"></div>
+                <div style="display:flex;gap:8px;margin-top:14px">
+                  <button class="btn btn-secondary" style="flex:1" onclick="stopApuntes()">✕ Salir</button>
+                  <button class="btn btn-primary" style="flex:1" id="apuntesNextBtn" onclick="nextApuntesQuestion()" disabled>Siguiente →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resultado final -->
+          <div id="apuntesResultZone" style="display:none">
+            <div class="card">
+              <div class="card-body" style="text-align:center;padding:24px 16px">
+                <div style="font-size:48px;margin-bottom:8px" id="apuntesResultEmoji"></div>
+                <div style="font-size:28px;font-weight:700;margin-bottom:4px" id="apuntesResultPct"></div>
+                <div style="font-size:13px;color:var(--fg2);margin-bottom:20px" id="apuntesResultDetail"></div>
+                <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="startApuntes()">🔄 Repetir</button>
+                <button class="btn btn-secondary" style="width:100%" onclick="stopApuntes()">← Configurar</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1973,6 +2037,172 @@ function renderPracSetup() {
   });
   sel.value = prev || 'all';
   renderPracStats();
+  renderApuntesSetup();
+}
+
+function renderApuntesSetup() {
+  const sel = document.getElementById('apuntesTemaSelect');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Todos los temas</option>';
+  const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'apuntes').map(q => q.tema))].sort((a,b)=>a-b);
+  temas.forEach(t => {
+    const name = `T${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
+    sel.innerHTML += `<option value="${t}">${name}</option>`;
+  });
+  sel.value = prev || 'all';
+  renderApuntesStats();
+}
+
+function renderApuntesStats() {
+  const el = document.getElementById('apuntesStatsLine');
+  if (!el) return;
+  const pool = buildApuntesPool();
+  const answered = pool.filter(q => apuntesState.answers[q.id]);
+  const pct = answered.length ? Math.round(answered.filter(q => apuntesState.answers[q.id]?.correct).length / answered.length * 100) : null;
+  el.textContent = `${pool.length} preguntas${pct !== null ? ` · ${pct}% acierto (${answered.length} respondidas)` : ''}`;
+}
+
+const apuntesState = { pool: [], idx: 0, correct: 0, total: 0, answered: false, currentQ: null, answers: {} };
+
+function buildApuntesPool() {
+  const qs = state.questions || [];
+  const temaVal = document.getElementById('apuntesTemaSelect')?.value || 'all';
+  const difVal = document.getElementById('apuntesDifSelect')?.value || 'all';
+  const order = document.getElementById('apuntesOrderSelect')?.value || 'random';
+
+  let pool = qs.filter(q => q.fuente === 'apuntes');
+  if (temaVal !== 'all') pool = pool.filter(q => String(q.tema) === String(temaVal));
+  if (difVal !== 'all') pool = pool.filter(q => q.dificultad === difVal);
+
+  if (order === 'sequential') {
+    pool.sort((a,b) => a.tema - b.tema || a.id - b.id);
+  } else if (order === 'worst') {
+    pool.sort((a,b) => {
+      const ra = apuntesState.answers[a.id] ? (apuntesState.answers[a.id].correct / apuntesState.answers[a.id].total) : -1;
+      const rb = apuntesState.answers[b.id] ? (apuntesState.answers[b.id].correct / apuntesState.answers[b.id].total) : -1;
+      return ra - rb;
+    });
+  } else if (order === 'least') {
+    pool.sort((a,b) => (apuntesState.answers[a.id]?.total || 0) - (apuntesState.answers[b.id]?.total || 0));
+  } else {
+    pool = pool.slice().sort(() => Math.random() - 0.5);
+  }
+  return pool;
+}
+
+function startApuntes() {
+  const pool = buildApuntesPool();
+  if (!pool.length) { alert('No hay preguntas con esos filtros.'); return; }
+  apuntesState.pool = pool;
+  apuntesState.idx = 0;
+  apuntesState.correct = 0;
+  apuntesState.total = 0;
+  apuntesState.answered = false;
+  document.getElementById('apuntesSetupCard').style.display = 'none';
+  document.getElementById('apuntesResultZone').style.display = 'none';
+  document.getElementById('apuntesQuestionZone').style.display = '';
+  showApuntesQuestion();
+}
+
+function showApuntesQuestion() {
+  if (apuntesState.idx >= apuntesState.pool.length) { showApuntesResult(); return; }
+  const q = apuntesState.pool[apuntesState.idx];
+  apuntesState.currentQ = q;
+  apuntesState.answered = false;
+
+  document.getElementById('apuntesNextBtn').disabled = true;
+  document.getElementById('apuntesFeedback').style.display = 'none';
+  document.getElementById('apuntesProgress').textContent = `${apuntesState.idx + 1} / ${apuntesState.pool.length}`;
+  document.getElementById('apuntesScore').textContent = `✅ ${apuntesState.correct} · ❌ ${apuntesState.total - apuntesState.correct}`;
+  document.getElementById('apuntesTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}${q.dificultad ? ` · ${q.dificultad}` : ''}`;
+  document.getElementById('apuntesPregunta').textContent = q.pregunta;
+
+  const opciones = q.opciones;
+  const shuffle = document.getElementById('apuntesShuffleOpts')?.checked ?? true;
+  const letters = ['a','b','c','d','e','f'];
+  let indices = opciones.map((_,i) => i);
+  if (shuffle && !hasOptionReferences(opciones)) {
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+  }
+
+  // correctas son textos directos (no letras)
+  const correctTexts = q.correctas;
+  const correctIdxs = opciones.map((o,i) => correctTexts.includes(o) ? i : -1).filter(i => i >= 0);
+
+  document.getElementById('apuntesOpciones').innerHTML = indices.map((origIdx, displayIdx) => {
+    return `<button class="prac-opt" data-orig="${origIdx}" onclick="answerApuntes(this, ${JSON.stringify(correctIdxs)})">${letters[displayIdx].toUpperCase()}) ${opciones[origIdx]}</button>`;
+  }).join('');
+}
+
+function answerApuntes(btn, correctIdxs) {
+  if (apuntesState.answered) return;
+  apuntesState.answered = true;
+
+  const origIdx = parseInt(btn.dataset.orig);
+  const isCorrect = correctIdxs.includes(origIdx);
+
+  document.querySelectorAll('#apuntesOpciones .prac-opt').forEach(b => {
+    b.disabled = true;
+    const bOrig = parseInt(b.dataset.orig);
+    if (correctIdxs.includes(bOrig)) b.classList.add('correct');
+    else if (b === btn && !isCorrect) b.classList.add('wrong');
+  });
+
+  if (isCorrect) apuntesState.correct++;
+  apuntesState.total++;
+
+  const q = apuntesState.currentQ;
+  const id = q.id;
+  if (!apuntesState.answers[id]) apuntesState.answers[id] = { correct: 0, total: 0 };
+  apuntesState.answers[id].total++;
+  if (isCorrect) apuntesState.answers[id].correct++;
+
+  state.practiceAnswers.push({ question_id: id, fuente: 'apuntes', tema: q.tema, correct: isCorrect, answered_at: new Date().toISOString() });
+  if (document.getElementById('pracResultsTable')) renderPracResultsTable(currentResTab || 'bateria_ivap');
+
+  if (supabaseReady) {
+    db.from('practice_answers').insert({ question_id: id, fuente: 'apuntes', tema: q.tema, correct: isCorrect })
+      .then(({error}) => { if (error) console.warn('Error guardando respuesta:', error); });
+  }
+
+  const fb = document.getElementById('apuntesFeedback');
+  fb.style.display = '';
+  const correctText = apuntesState.currentQ.opciones.filter((_,i) => correctIdxs.includes(i)).join(' / ');
+  if (isCorrect) {
+    fb.style.background = 'var(--green-dim)'; fb.style.color = 'var(--green)';
+    fb.textContent = `✅ ¡Correcto!${q.explicacion ? ' — ' + q.explicacion : ''}`;
+  } else {
+    fb.style.background = 'var(--red-dim)'; fb.style.color = 'var(--red)';
+    fb.textContent = `❌ Incorrecto. Correcta: ${correctText}${q.explicacion ? ' — ' + q.explicacion : ''}`;
+  }
+
+  document.getElementById('apuntesNextBtn').disabled = false;
+  document.getElementById('apuntesScore').textContent = `✅ ${apuntesState.correct} · ❌ ${apuntesState.total - apuntesState.correct}`;
+}
+
+function nextApuntesQuestion() {
+  apuntesState.idx++;
+  showApuntesQuestion();
+}
+
+function showApuntesResult() {
+  document.getElementById('apuntesQuestionZone').style.display = 'none';
+  document.getElementById('apuntesResultZone').style.display = '';
+  const pct = apuntesState.total ? Math.round(apuntesState.correct / apuntesState.total * 100) : 0;
+  document.getElementById('apuntesResultEmoji').textContent = pct >= 70 ? '🎉' : pct >= 50 ? '💪' : '📖';
+  document.getElementById('apuntesResultPct').textContent = `${pct}%`;
+  document.getElementById('apuntesResultDetail').textContent = `${apuntesState.correct} correctas de ${apuntesState.total} preguntas`;
+}
+
+function stopApuntes() {
+  document.getElementById('apuntesQuestionZone').style.display = 'none';
+  document.getElementById('apuntesResultZone').style.display = 'none';
+  document.getElementById('apuntesSetupCard').style.display = '';
+  renderApuntesStats();
 }
 
 function renderPracStats() {
