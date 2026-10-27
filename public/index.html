@@ -1051,7 +1051,13 @@ async function syncAll() {
 
     state.tests = tests || [];
     state.planSessions = planSessions || [];
-    state.questions = questions || [];
+    // Normalizar questions: parsear opciones/correctas si vienen como string JSON, y hacer trim a fuente
+    state.questions = (questions || []).map(q => ({
+      ...q,
+      fuente: (q.fuente || 'bateria_ivap').trim(),
+      opciones: typeof q.opciones === 'string' ? JSON.parse(q.opciones) : (q.opciones || []),
+      correctas: typeof q.correctas === 'string' ? JSON.parse(q.correctas) : (q.correctas || []),
+    }));
     state.practiceAnswers = practiceAnswers || [];
 
     // Inicializar answers históricos para ordenamiento "Peores %" y "Menos respondidas"
