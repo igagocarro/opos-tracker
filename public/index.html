@@ -737,11 +737,75 @@
 
       <!-- Específica -->
       <div id="ptab-especifica" style="display:none">
-        <div class="card">
-          <div class="card-body" style="text-align:center;padding:32px 16px">
-            <div style="font-size:40px;margin-bottom:12px">📈</div>
-            <div style="font-weight:600;margin-bottom:8px">Próximamente</div>
-            <div style="font-size:13px;color:var(--fg2)">Aquí aparecerán las preguntas de la parte específica.</div>
+        <div class="card" id="espSetupCard">
+          <div class="card-header"><span class="card-title">Configurar práctica</span></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+            <div>
+              <label class="form-label">Tema</label>
+              <select class="form-select" id="espTemaSelect" onchange="renderEspStats()">
+                <option value="all">Todos los temas</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1">
+                <label class="form-label">Dificultad</label>
+                <select class="form-select" id="espDifSelect" onchange="renderEspStats()">
+                  <option value="all">Todas</option>
+                  <option value="facil">Fácil</option>
+                  <option value="media">Media</option>
+                  <option value="dificil">Difícil</option>
+                </select>
+              </div>
+              <div style="flex:1">
+                <label class="form-label">Orden</label>
+                <select class="form-select" id="espOrderSelect">
+                  <option value="random">Aleatorio</option>
+                  <option value="sequential">Secuencial</option>
+                  <option value="worst">Peores %</option>
+                  <option value="least">Menos respondidas</option>
+                </select>
+              </div>
+            </div>
+            <div style="padding-top:2px">
+              <label style="font-size:13px;display:flex;gap:6px;align-items:center;cursor:pointer">
+                <input type="checkbox" id="espShuffleOpts" checked> Barajar opciones
+              </label>
+            </div>
+            <div id="espStatsLine" style="font-size:12px;color:var(--fg3)"></div>
+            <button class="btn btn-primary" onclick="startEsp()">▶ Empezar</button>
+          </div>
+        </div>
+
+        <!-- Zona de pregunta -->
+        <div id="espQuestionZone" style="display:none">
+          <div class="card">
+            <div class="card-body">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <span style="font-size:12px;color:var(--fg3)" id="espProgress"></span>
+                <span style="font-size:12px;font-weight:600" id="espScore"></span>
+              </div>
+              <div style="font-size:12px;color:var(--fg2);margin-bottom:6px" id="espTemaBadge"></div>
+              <p style="font-size:15px;font-weight:600;line-height:1.5;margin-bottom:14px" id="espPregunta"></p>
+              <div id="espOpciones" style="display:flex;flex-direction:column;gap:8px"></div>
+              <div id="espFeedback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:13px"></div>
+              <div style="display:flex;gap:8px;margin-top:14px">
+                <button class="btn btn-secondary" style="flex:1" onclick="stopEsp()">✕ Salir</button>
+                <button class="btn btn-primary" style="flex:1" id="espNextBtn" onclick="nextEspQuestion()" disabled>Siguiente →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultado final -->
+        <div id="espResultZone" style="display:none">
+          <div class="card">
+            <div class="card-body" style="text-align:center;padding:24px 16px">
+              <div style="font-size:48px;margin-bottom:8px" id="espResultEmoji"></div>
+              <div style="font-size:28px;font-weight:700;margin-bottom:4px" id="espResultPct"></div>
+              <div style="font-size:13px;color:var(--fg2);margin-bottom:20px" id="espResultDetail"></div>
+              <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="startEsp()">🔄 Repetir</button>
+              <button class="btn btn-secondary" style="width:100%" onclick="stopEsp()">← Configurar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1002,6 +1066,10 @@ async function syncAll() {
         if (!apuntesState.answers[a.question_id]) apuntesState.answers[a.question_id] = {correct:0, total:0};
         apuntesState.answers[a.question_id].total++;
         if (a.correct) apuntesState.answers[a.question_id].correct++;
+      } else if (a.fuente === 'especifica') {
+        if (!especificaState.answers[a.question_id]) especificaState.answers[a.question_id] = {correct:0, total:0};
+        especificaState.answers[a.question_id].total++;
+        if (a.correct) especificaState.answers[a.question_id].correct++;
       }
     });
 
@@ -2042,6 +2110,7 @@ function switchPracTab(tab) {
   document.getElementById('ptab-bateria').style.display = tab === 'bateria' ? '' : 'none';
   document.getElementById('ptab-general').style.display = tab === 'general' ? '' : 'none';
   document.getElementById('ptab-especifica').style.display = tab === 'especifica' ? '' : 'none';
+  if (tab === 'especifica') renderEspSetup();
 }
 
 function switchPracSubtab(sub) {
@@ -2063,6 +2132,7 @@ function renderPracSetup() {
   sel.value = prev || 'all';
   renderPracStats();
   renderApuntesSetup();
+  renderEspSetup();
 }
 
 function renderApuntesSetup() {
@@ -2229,6 +2299,174 @@ function stopApuntes() {
   document.getElementById('apuntesSetupCard').style.display = '';
   renderApuntesStats();
 }
+
+// ── ESPECÍFICA ────────────────────────────────────────────────────────────────
+
+const especificaState = { pool: [], idx: 0, correct: 0, total: 0, answered: false, currentQ: null, answers: {} };
+
+function renderEspSetup() {
+  const sel = document.getElementById('espTemaSelect');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">Todos los temas</option>';
+  const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'especifica').map(q => q.tema))].sort((a,b) => a-b);
+  temas.forEach(t => {
+    const name = `T${String(t).padStart(2,'0')} — ${(TEMAS.find(x => x.t == t) || {}).n || 'Tema ' + t}`;
+    sel.insertAdjacentHTML('beforeend', `<option value="${t}">${name}</option>`);
+  });
+  sel.value = prev && sel.querySelector(`option[value="${prev}"]`) ? prev : 'all';
+  renderEspStats();
+}
+
+function renderEspStats() {
+  const el = document.getElementById('espStatsLine');
+  if (!el) return;
+  const pool = buildEspPool();
+  const answered = pool.filter(q => especificaState.answers[q.id]);
+  const pct = answered.length ? Math.round(answered.filter(q => especificaState.answers[q.id]?.correct).length / answered.length * 100) : null;
+  el.textContent = `${pool.length} preguntas${pct !== null ? ` · ${pct}% acierto (${answered.length} respondidas)` : ''}`;
+}
+
+function buildEspPool() {
+  const qs = (state.questions || []).filter(q => q.fuente === 'especifica');
+  const temaVal = document.getElementById('espTemaSelect')?.value || 'all';
+  const dif = document.getElementById('espDifSelect')?.value || 'all';
+  const order = document.getElementById('espOrderSelect')?.value || 'random';
+  let pool = qs.filter(q => (temaVal === 'all' || String(q.tema) === String(temaVal)) && (dif === 'all' || q.dificultad === dif));
+  if (order === 'sequential') {
+    pool = pool.slice().sort((a,b) => a.tema - b.tema || a.id - b.id);
+  } else if (order === 'worst') {
+    pool.sort((a,b) => {
+      const ra = especificaState.answers[a.id] ? (especificaState.answers[a.id].correct / especificaState.answers[a.id].total) : 2;
+      const rb = especificaState.answers[b.id] ? (especificaState.answers[b.id].correct / especificaState.answers[b.id].total) : 2;
+      return ra - rb;
+    });
+  } else if (order === 'least') {
+    pool.sort((a,b) => (especificaState.answers[a.id]?.total || 0) - (especificaState.answers[b.id]?.total || 0));
+  } else {
+    pool = pool.slice().sort(() => Math.random() - 0.5);
+  }
+  return pool;
+}
+
+function startEsp() {
+  const pool = buildEspPool();
+  if (!pool.length) { alert('No hay preguntas con esos filtros.'); return; }
+  especificaState.pool = pool;
+  especificaState.idx = 0;
+  especificaState.correct = 0;
+  especificaState.total = 0;
+  especificaState.answered = false;
+  document.getElementById('espSetupCard').style.display = 'none';
+  document.getElementById('espResultZone').style.display = 'none';
+  document.getElementById('espQuestionZone').style.display = '';
+  showEspQuestion();
+}
+
+function showEspQuestion() {
+  if (especificaState.idx >= especificaState.pool.length) { showEspResult(); return; }
+  const q = especificaState.pool[especificaState.idx];
+  especificaState.currentQ = q;
+  especificaState.answered = false;
+
+  document.getElementById('espNextBtn').disabled = true;
+  document.getElementById('espFeedback').style.display = 'none';
+  document.getElementById('espProgress').textContent = `${especificaState.idx + 1} / ${especificaState.pool.length}`;
+  document.getElementById('espScore').textContent = `✅ ${especificaState.correct} · ❌ ${especificaState.total - especificaState.correct}`;
+  const temaNombre = (TEMAS.find(x => x.t == q.tema) || {}).n || 'Tema ' + q.tema;
+  document.getElementById('espTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${temaNombre}${q.dificultad ? ` · ${q.dificultad}` : ''}`;
+  document.getElementById('espPregunta').textContent = q.pregunta;
+
+  const shuffle = document.getElementById('espShuffleOpts')?.checked ?? true;
+  let opts = (q.opciones || []).map((o, i) => ({ text: o, orig: i }));
+  if (shuffle) opts = opts.sort(() => Math.random() - 0.5);
+
+  const correctas = Array.isArray(q.correctas) ? q.correctas : [q.correctas];
+  // correctas are full text strings for específica
+  const correctIdxs = opts.map((o,i) => correctas.includes(o.text) ? i : -1).filter(i => i >= 0);
+
+  const cont = document.getElementById('espOpciones');
+  cont.innerHTML = '';
+  opts.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-secondary';
+    btn.style.cssText = 'text-align:left;white-space:normal;word-break:break-word';
+    btn.textContent = o.text;
+    btn.dataset.orig = o.orig;
+    btn.onclick = () => answerEsp(btn, correctIdxs, opts);
+    cont.appendChild(btn);
+  });
+}
+
+function answerEsp(btn, correctIdxs, opts) {
+  if (especificaState.answered) return;
+  especificaState.answered = true;
+
+  const clickedIdx = Array.from(btn.parentElement.children).indexOf(btn);
+  const isCorrect = correctIdxs.includes(clickedIdx);
+
+  Array.from(btn.parentElement.children).forEach((b, i) => {
+    b.disabled = true;
+    if (correctIdxs.includes(i)) { b.style.background = 'var(--green-dim)'; b.style.color = 'var(--green)'; b.style.borderColor = 'var(--green)'; }
+    else if (i === clickedIdx && !isCorrect) { b.style.background = 'var(--red-dim)'; b.style.color = 'var(--red)'; b.style.borderColor = 'var(--red)'; }
+  });
+
+  if (isCorrect) especificaState.correct++;
+  especificaState.total++;
+
+  const q = especificaState.currentQ;
+  const id = q.id;
+  if (!especificaState.answers[id]) especificaState.answers[id] = { correct: 0, total: 0 };
+  especificaState.answers[id].total++;
+  if (isCorrect) especificaState.answers[id].correct++;
+
+  state.practiceAnswers.push({ question_id: id, fuente: 'especifica', tema: q.tema, correct: isCorrect, answered_at: new Date().toISOString() });
+
+  const saveOp = async () => {
+    try {
+      const { error } = await supabase.from('practice_answers').insert([{ question_id: id, fuente: 'especifica', tema: q.tema, correct: isCorrect }]);
+      if (error) console.error('Error saving answer:', error);
+    } catch(e) { console.error(e); }
+  };
+  saveOp();
+
+  const fb = document.getElementById('espFeedback');
+  fb.style.display = '';
+  const correctText = opts.filter((_,i) => correctIdxs.includes(i)).map(o => o.text).join(' / ');
+  if (isCorrect) {
+    fb.style.background = 'var(--green-dim)'; fb.style.color = 'var(--green)';
+    fb.textContent = '✅ ¡Correcto!' + (q.explicacion ? ` ${q.explicacion}` : '');
+  } else {
+    fb.style.background = 'var(--red-dim)'; fb.style.color = 'var(--red)';
+    fb.textContent = `❌ Respuesta correcta: ${correctText}` + (q.explicacion ? ` · ${q.explicacion}` : '');
+  }
+
+  document.getElementById('espNextBtn').disabled = false;
+  document.getElementById('espScore').textContent = `✅ ${especificaState.correct} · ❌ ${especificaState.total - especificaState.correct}`;
+}
+
+function nextEspQuestion() {
+  especificaState.idx++;
+  showEspQuestion();
+}
+
+function showEspResult() {
+  document.getElementById('espQuestionZone').style.display = 'none';
+  document.getElementById('espResultZone').style.display = '';
+  const pct = especificaState.total ? Math.round(especificaState.correct / especificaState.total * 100) : 0;
+  document.getElementById('espResultEmoji').textContent = pct >= 70 ? '🎉' : pct >= 50 ? '💪' : '📖';
+  document.getElementById('espResultPct').textContent = `${pct}%`;
+  document.getElementById('espResultDetail').textContent = `${especificaState.correct} correctas de ${especificaState.total} preguntas`;
+}
+
+function stopEsp() {
+  document.getElementById('espQuestionZone').style.display = 'none';
+  document.getElementById('espResultZone').style.display = 'none';
+  document.getElementById('espSetupCard').style.display = '';
+  renderEspStats();
+}
+
+// ── FIN ESPECÍFICA ────────────────────────────────────────────────────────────
 
 function renderPracStats() {
   const el = document.getElementById('pracStatsLine');
