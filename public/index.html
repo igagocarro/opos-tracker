@@ -1023,14 +1023,23 @@ async function syncAll() {
       {data: sessions},
       {data: tests},
       {data: planSessions},
-      {data: questions},
     ] = await Promise.all([
       db.from('topic_status').select('*'),
       db.from('sessions').select('*'),
       db.from('tests').select('*').order('date', {ascending:false}),
       db.from('plan_sessions').select('*').order('date', {ascending:true}).order('id', {ascending:true}),
-      db.from('questions').select('*').order('tema', {ascending:true}).order('id', {ascending:true}),
     ]);
+
+    // Paginar questions de 1000 en 1000
+    let questions = [];
+    let qOffset = 0;
+    while (true) {
+      const {data: batch, error} = await db.from('questions').select('*').order('tema', {ascending:true}).order('id', {ascending:true}).range(qOffset, qOffset + 999);
+      if (error || !batch || batch.length === 0) break;
+      questions = questions.concat(batch);
+      if (batch.length < 1000) break;
+      qOffset += 1000;
+    }
 
     // Paginar practice_answers de 1000 en 1000
     let practiceAnswers = [];
@@ -1051,13 +1060,22 @@ async function syncAll() {
 
     state.tests = tests || [];
     state.planSessions = planSessions || [];
-    // Normalizar questions: parsear opciones/correctas si vienen como string JSON, y hacer trim a fuente
-    state.questions = (questions || []).map(q => ({
-      ...q,
-      fuente: (q.fuente || 'bateria_ivap').trim(),
-      opciones: typeof q.opciones === 'string' ? JSON.parse(q.opciones) : (q.opciones || []),
-      correctas: typeof q.correctas === 'string' ? JSON.parse(q.correctas) : (q.correctas || []),
-    }));
+    // Normalizar questions: parsear opciones/correctas si vienen como string JSON, trim fuente, tema a entero
+    state.questions = (questions || []).map(q => {
+      let opciones = q.opciones;
+      let correctas = q.correctas;
+      try { if (typeof opciones === 'string') opciones = JSON.parse(opciones); } catch(e) { opciones = []; }
+      try { if (typeof correctas === 'string') correctas = JSON.parse(correctas); } catch(e) { correctas = []; }
+      if (!Array.isArray(opciones)) opciones = [];
+      if (!Array.isArray(correctas)) correctas = [correctas].filter(Boolean);
+      return {
+        ...q,
+        tema: parseInt(q.tema) || 0,
+        fuente: (q.fuente || 'bateria_ivap').trim(),
+        opciones,
+        correctas,
+      };
+    });
     state.practiceAnswers = practiceAnswers || [];
 
     // Inicializar answers históricos para ordenamiento "Peores %" y "Menos respondidas"
