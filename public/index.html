@@ -1916,9 +1916,10 @@ function renderPracResultsTable(fuente) {
           const totalTotal = Object.values(stats[t]||{}).reduce((s,v)=>s+v.total,0);
           const totalPct = totalTotal ? Math.round(totalCorrect/totalTotal*100) : null;
           const clickAttr = isIvap ? `onclick="showPracDrilldown(${t})" style="cursor:pointer"` : '';
+          const prefix = isIvap ? 'T' : 'G';
           return `<tr>
             <td ${clickAttr} style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--fg);font-weight:500;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${generalNombre(t)}">
-              T${String(t).padStart(2,'0')}
+              ${prefix}${String(t).padStart(2,'0')}
             </td>
             ${months.map(m => {
               const d = stats[t]?.[m];
@@ -2071,7 +2072,7 @@ function renderApuntesSetup() {
   sel.innerHTML = '<option value="all">Todos los temas</option>';
   const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'apuntes').map(q => q.tema))].sort((a,b)=>a-b);
   temas.forEach(t => {
-    const name = `T${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
+    const name = `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
     sel.innerHTML += `<option value="${t}">${name}</option>`;
   });
   sel.value = prev || 'all';
@@ -2139,7 +2140,7 @@ function showApuntesQuestion() {
   document.getElementById('apuntesFeedback').style.display = 'none';
   document.getElementById('apuntesProgress').textContent = `${apuntesState.idx + 1} / ${apuntesState.pool.length}`;
   document.getElementById('apuntesScore').textContent = `✅ ${apuntesState.correct} · ❌ ${apuntesState.total - apuntesState.correct}`;
-  document.getElementById('apuntesTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}${q.dificultad ? ` · ${q.dificultad}` : ''}`;
+  document.getElementById('apuntesTemaBadge').textContent = `G${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}${q.dificultad ? ` · ${q.dificultad}` : ''}`;
   document.getElementById('apuntesPregunta').textContent = q.pregunta;
 
   const opciones = q.opciones;
