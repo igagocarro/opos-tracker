@@ -105,8 +105,8 @@
   .icon-btn.sync-ok { border-color: var(--green); color: var(--green); background: var(--green-dim); }
   .icon-btn.sync-err { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
 
-  /* Nav — 5 tabs */
-  .nav { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
+  /* Nav — 4 tabs */
+  .nav { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--surface); }
   .nav-btn {
     padding: 8px 1px 7px;
     border: none; background: none; cursor: pointer;
@@ -409,7 +409,6 @@
     <button class="nav-btn active" data-view="resumen"><span class="nav-icon">📑</span>Resumen</button>
     <button class="nav-btn" data-view="semana"><span class="nav-icon">📅</span>Semana</button>
     <button class="nav-btn" data-view="temas"><span class="nav-icon">📚</span>Temas</button>
-    <button class="nav-btn" data-view="fases"><span class="nav-icon">🎯</span>Fases</button>
     <button class="nav-btn" data-view="practicar"><span class="nav-icon">🧠</span>Practicar</button>
   </nav>
 
@@ -498,31 +497,46 @@
 
     <!-- TEMAS -->
     <div class="view" id="view-temas">
-      <!-- Toggle específica/general -->
-      <div class="temas-toggle">
-        <button class="temas-toggle-btn active" id="togEspecifica" onclick="switchTemasTab('especifica')">
-          📈 Específica <span id="badgeEsp" style="font-size:10px;background:var(--surface2);border-radius:99px;padding:1px 6px;margin-left:2px">58</span>
-        </button>
-        <button class="temas-toggle-btn" id="togGeneral" onclick="switchTemasTab('general')">
-          ⚖️ General <span id="badgeGen" style="font-size:10px;background:var(--surface2);border-radius:99px;padding:1px 6px;margin-left:2px">26</span>
-        </button>
+      <!-- 3 subtabs: Esp / Gral / Fases -->
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="prac-tab active" data-ttab="especifica" onclick="switchTemasTab('especifica')">📈 Esp.</button>
+        <button class="prac-tab" data-ttab="general" onclick="switchTemasTab('general')">⚖️ Gral.</button>
+        <button class="prac-tab" data-ttab="fases" onclick="switchTemasTab('fases')">🎯 Fases</button>
       </div>
-      <div class="card" id="temasCard">
-        <div class="card-header" style="flex-wrap:wrap;gap:8px">
-          <span class="card-title" id="temasCardTitle">58 temas · Parte específica</span>
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterAll">Todos</button>
-            <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterWeak">❌ Flojos</button>
-          </div>
-        </div>
-        <div id="temasList"></div>
-      </div>
-    </div>
 
-    <!-- FASES -->
-    <div class="view" id="view-fases">
-      <div style="font-size:12px;color:var(--fg3);text-align:center;padding:4px 0 8px">Planning completo de 25 semanas</div>
-      <div id="fasesList"></div>
+      <!-- Temas Específica -->
+      <div id="ttab-especifica">
+        <div class="card" id="temasCard">
+          <div class="card-header" style="flex-wrap:wrap;gap:8px">
+            <span class="card-title" id="temasCardTitle">58 temas · Parte específica</span>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterAll">Todos</button>
+              <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterWeak">❌ Flojos</button>
+            </div>
+          </div>
+          <div id="temasList"></div>
+        </div>
+      </div>
+
+      <!-- Temas General -->
+      <div id="ttab-general" style="display:none">
+        <div class="card">
+          <div class="card-header" style="flex-wrap:wrap;gap:8px">
+            <span class="card-title">26 temas · Parte general</span>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterAllGen">Todos</button>
+              <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px" id="filterWeakGen">❌ Flojos</button>
+            </div>
+          </div>
+          <div id="temasListGen"></div>
+        </div>
+      </div>
+
+      <!-- Fases -->
+      <div id="ttab-fases" style="display:none">
+        <div style="font-size:12px;color:var(--fg3);text-align:center;padding:4px 0 8px">Planning completo de 25 semanas</div>
+        <div id="fasesList"></div>
+      </div>
     </div>
 
     <!-- TESTS -->
@@ -1065,7 +1079,6 @@ function switchView(id) {
   if (id === 'semana') renderWeek();
   if (id === 'temas') renderTemas();
   if (id === 'resumen') { syncAll(); renderResumen(); }
-  if (id === 'fases') renderFases();
   if (id === 'practicar') renderPracSetup();
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
@@ -1418,26 +1431,18 @@ let selectedTopicIsGeneral = false;
 
 function switchTemasTab(tab) {
   temasTab = tab;
-  document.getElementById('togEspecifica').className = 'temas-toggle-btn' + (tab==='especifica'?' active':'');
-  document.getElementById('togGeneral').className = 'temas-toggle-btn' + (tab==='general'?' active':'');
-  renderTemas();
+  document.querySelectorAll('[data-ttab]').forEach(b => b.classList.toggle('active', b.dataset.ttab === tab));
+  document.getElementById('ttab-especifica').style.display = tab === 'especifica' ? '' : 'none';
+  document.getElementById('ttab-general').style.display = tab === 'general' ? '' : 'none';
+  document.getElementById('ttab-fases').style.display = tab === 'fases' ? '' : 'none';
+  if (tab === 'fases') renderFases();
+  else renderTemas();
 }
 
-function renderTemas() {
-  const list = document.getElementById('temasList');
-  const isGeneral = temasTab === 'general';
+function renderTemasInto(listId, isGeneral) {
+  const list = document.getElementById(listId);
+  if (!list) return;
   const allTemas = isGeneral ? TEMAS_GENERAL : TEMAS;
-  const totalCount = allTemas.length;
-
-  document.getElementById('temasCardTitle').textContent =
-    `${totalCount} temas · Parte ${isGeneral?'general':'específica'}`;
-
-  // Update badges with current counts
-  const espDone = TEMAS.filter(t => state.topicStatus[t.t]).length;
-  const genDone = TEMAS_GENERAL.filter(t => state.topicStatus[t.t]).length;
-  document.getElementById('badgeEsp').textContent = `${espDone}/58`;
-  document.getElementById('badgeGen').textContent = `${genDone}/26`;
-
   const items = temasFilter === 'weak'
     ? allTemas.filter(t => !state.topicStatus[t.t] || state.topicStatus[t.t]==='weak')
     : allTemas;
@@ -1456,7 +1461,7 @@ function renderTemas() {
       lastBloque = tema.bloque;
       hdr = `<div style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;border-top:1px solid var(--border)">${tema.bloque}</div>`;
     }
-    const numDisplay = isGeneral ? tema.t : String(tema.t).padStart(2,'0');
+    const numDisplay = isGeneral ? tema.t : `T${String(tema.t).padStart(2,'0')}`;
     return `${hdr}<div class="topic-item" data-t="${tema.t}" data-gen="${isGeneral}">
       <div class="topic-num">${numDisplay}</div>
       <div class="topic-info"><div class="topic-name">${tema.nombre}</div></div>
@@ -1472,8 +1477,15 @@ function renderTemas() {
   });
 }
 
+function renderTemas() {
+  renderTemasInto('temasList', false);
+  renderTemasInto('temasListGen', true);
+}
+
 document.getElementById('filterAll').addEventListener('click', () => { temasFilter='all'; renderTemas(); });
 document.getElementById('filterWeak').addEventListener('click', () => { temasFilter='weak'; renderTemas(); });
+document.getElementById('filterAllGen').addEventListener('click', () => { temasFilter='all'; renderTemas(); });
+document.getElementById('filterWeakGen').addEventListener('click', () => { temasFilter='weak'; renderTemas(); });
 
 function openTopicModal(t, isGeneral) {
   selectedTopic = isGeneral ? t : parseInt(t);
@@ -1496,7 +1508,7 @@ async function setTopicStatus(status) {
     await saveTopicStatus(selectedTopic, status);
     renderTemas();
     renderResumen();
-    if (document.getElementById('view-fases').classList.contains('active')) renderFases();
+    if (document.getElementById('ttab-fases') && document.getElementById('ttab-fases').style.display !== 'none' && document.getElementById('view-temas').classList.contains('active')) renderFases();
   }
   document.getElementById('topicModal').style.display = 'none';
   selectedTopic = null;
