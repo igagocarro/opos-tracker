@@ -2498,14 +2498,32 @@ function stopEsp() {
 // ── FIN ESPECÍFICA ────────────────────────────────────────────────────────────
 
 function renderMath(el) {
-  if (!el || typeof renderMathInElement === 'undefined') return;
-  renderMathInElement(el, {
-    delimiters: [
-      {left: '$$', right: '$$', display: true},
-      {left: '$',  right: '$',  display: false},
-    ],
-    throwOnError: false,
-  });
+  if (!el || typeof katex === 'undefined') return;
+  // Walk text nodes and replace $...$ and $$...$$ with rendered KaTeX
+  function processNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent;
+      if (!text.includes('$')) return;
+      const span = document.createElement('span');
+      // Replace $$...$$ first (display), then $...$ (inline)
+      let html = text
+        .replace(/\$\$([^$]+?)\$\$/g, (_, math) => {
+          try { return katex.renderToString(math, {displayMode: true, throwOnError: false}); }
+          catch(e) { return _; }
+        })
+        .replace(/\$([^$\n]+?)\$/g, (_, math) => {
+          try { return katex.renderToString(math, {displayMode: false, throwOnError: false}); }
+          catch(e) { return _; }
+        });
+      if (html !== text) {
+        span.innerHTML = html;
+        node.parentNode.replaceChild(span, node);
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
+      Array.from(node.childNodes).forEach(processNode);
+    }
+  }
+  Array.from(el.childNodes).forEach(processNode);
 }
 
 function renderPracStats() {
