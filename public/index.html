@@ -2094,8 +2094,8 @@ function buildApuntesPool() {
     pool.sort((a,b) => a.tema - b.tema || a.id - b.id);
   } else if (order === 'worst') {
     pool.sort((a,b) => {
-      const ra = apuntesState.answers[a.id] ? (apuntesState.answers[a.id].correct / apuntesState.answers[a.id].total) : -1;
-      const rb = apuntesState.answers[b.id] ? (apuntesState.answers[b.id].correct / apuntesState.answers[b.id].total) : -1;
+      const ra = apuntesState.answers[a.id] ? (apuntesState.answers[a.id].correct / apuntesState.answers[a.id].total) : 2;
+      const rb = apuntesState.answers[b.id] ? (apuntesState.answers[b.id].correct / apuntesState.answers[b.id].total) : 2;
       return ra - rb;
     });
   } else if (order === 'least') {
@@ -2245,8 +2245,8 @@ function buildPool() {
     pool.sort((a,b) => {
       const pa = pracState.answers[a.id];
       const pb = pracState.answers[b.id];
-      const ra = pa ? (pa.correct / pa.total) : -1;
-      const rb = pb ? (pb.correct / pb.total) : -1;
+      const ra = pa ? (pa.correct / pa.total) : 2;
+      const rb = pb ? (pb.correct / pb.total) : 2;
       return ra - rb;
     });
   } else if (order === 'least') {
