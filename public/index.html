@@ -2311,7 +2311,7 @@ function renderEspSetup() {
   sel.innerHTML = '<option value="all">Todos los temas</option>';
   const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'especifica').map(q => q.tema))].sort((a,b) => a-b);
   temas.forEach(t => {
-    const name = `T${String(t).padStart(2,'0')} — ${(TEMAS.find(x => x.t == t) || {}).n || 'Tema ' + t}`;
+    const name = `T${String(t).padStart(2,'0')} — ${(TEMAS.find(x => x.t == t) || {}).nombre || 'Tema ' + t}`;
     sel.insertAdjacentHTML('beforeend', `<option value="${t}">${name}</option>`);
   });
   sel.value = prev && sel.querySelector(`option[value="${prev}"]`) ? prev : 'all';
@@ -2373,7 +2373,7 @@ function showEspQuestion() {
   document.getElementById('espFeedback').style.display = 'none';
   document.getElementById('espProgress').textContent = `${especificaState.idx + 1} / ${especificaState.pool.length}`;
   document.getElementById('espScore').textContent = `✅ ${especificaState.correct} · ❌ ${especificaState.total - especificaState.correct}`;
-  const temaNombre = (TEMAS.find(x => x.t == q.tema) || {}).n || 'Tema ' + q.tema;
+  const temaNombre = (TEMAS.find(x => x.t == q.tema) || {}).nombre || 'Tema ' + q.tema;
   document.getElementById('espTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${temaNombre}${q.dificultad ? ` · ${q.dificultad}` : ''}`;
   document.getElementById('espPregunta').textContent = q.pregunta;
 
