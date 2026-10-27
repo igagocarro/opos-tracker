@@ -566,21 +566,15 @@
 
     <!-- PRACTICAR -->
     <div class="view" id="view-practicar">
-      <!-- Tabs principales: General / Específica -->
+      <!-- 3 tabs: Batería / General / Específica -->
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="prac-tab active" data-ptab="general" onclick="switchPracTab('general')">⚖️ General</button>
+        <button class="prac-tab active" data-ptab="bateria" onclick="switchPracTab('bateria')">🔋 Batería</button>
+        <button class="prac-tab" data-ptab="general" onclick="switchPracTab('general')">⚖️ General</button>
         <button class="prac-tab" data-ptab="especifica" onclick="switchPracTab('especifica')">📈 Específica</button>
       </div>
 
-      <!-- General -->
-      <div id="ptab-general">
-        <!-- Subtabs -->
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <button class="prac-subtab active" data-subtab="bateria" onclick="switchPracSubtab('bateria')">🔋 Batería IVAP</button>
-          <button class="prac-subtab" data-subtab="apuntes" onclick="switchPracSubtab('apuntes')">⚖️ Mis apuntes</button>
-        </div>
-
-        <!-- Batería IVAP -->
+      <!-- Batería IVAP -->
+      <div id="ptab-bateria">
         <div id="psubtab-bateria">
           <div class="card" id="pracSetupCard">
             <div class="card-header"><span class="card-title">Configurar práctica</span></div>
@@ -648,9 +642,11 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Mis apuntes -->
-        <div id="psubtab-apuntes" style="display:none">
+      <!-- General (Mis apuntes) -->
+      <div id="ptab-general" style="display:none">
+        <div id="psubtab-apuntes">
           <div class="card" id="apuntesSetupCard">
             <div class="card-header"><span class="card-title">Configurar práctica</span></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
@@ -2030,12 +2026,13 @@ let pracState = {
 
 function switchPracTab(tab) {
   document.querySelectorAll('.prac-tab').forEach(b => b.classList.toggle('active', b.dataset.ptab === tab));
+  document.getElementById('ptab-bateria').style.display = tab === 'bateria' ? '' : 'none';
   document.getElementById('ptab-general').style.display = tab === 'general' ? '' : 'none';
   document.getElementById('ptab-especifica').style.display = tab === 'especifica' ? '' : 'none';
 }
 
 function switchPracSubtab(sub) {
-  document.querySelectorAll('.prac-subtab').forEach(b => b.classList.toggle('active', b.dataset.subtab === sub));
+  // ya no se usa — mantenemos por compatibilidad
   document.getElementById('psubtab-bateria').style.display = sub === 'bateria' ? '' : 'none';
   document.getElementById('psubtab-apuntes').style.display = sub === 'apuntes' ? '' : 'none';
 }
