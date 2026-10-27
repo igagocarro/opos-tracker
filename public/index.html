@@ -980,6 +980,21 @@ async function syncAll() {
     state.questions = questions || [];
     state.practiceAnswers = practiceAnswers || [];
 
+    // Inicializar answers históricos para ordenamiento "Peores %" y "Menos respondidas"
+    pracState.answers = {};
+    apuntesState.answers = {};
+    state.practiceAnswers.forEach(a => {
+      if ((a.fuente || 'bateria_ivap') === 'bateria_ivap') {
+        if (!pracState.answers[a.question_id]) pracState.answers[a.question_id] = {correct:0, total:0};
+        pracState.answers[a.question_id].total++;
+        if (a.correct) pracState.answers[a.question_id].correct++;
+      } else if (a.fuente === 'apuntes') {
+        if (!apuntesState.answers[a.question_id]) apuntesState.answers[a.question_id] = {correct:0, total:0};
+        apuntesState.answers[a.question_id].total++;
+        if (a.correct) apuntesState.answers[a.question_id].correct++;
+      }
+    });
+
     setSyncBtn('ok');
     renderResumen();
     renderTemas();
@@ -1866,9 +1881,9 @@ function renderPracResultsTable(fuente) {
 
   const cellStyle = (pct) => {
     if (pct === null) return 'background:transparent;color:var(--fg3)';
-    if (pct >= 90) return 'background:#d1fae5;color:#065f46';
-    if (pct >= 70) return 'background:#fef3c7;color:#92400e';
-    return 'background:#fee2e2;color:#991b1b';
+    if (pct >= 90) return 'background:var(--green-dim);color:var(--green)';
+    if (pct >= 70) return 'background:var(--amber-dim);color:var(--amber)';
+    return 'background:var(--red-dim);color:var(--red)';
   };
   const cellVal = (d) => {
     if (!d) return '—';
