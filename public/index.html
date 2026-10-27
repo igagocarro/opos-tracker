@@ -1916,7 +1916,7 @@ function renderPracResultsTable(fuente) {
           const totalTotal = Object.values(stats[t]||{}).reduce((s,v)=>s+v.total,0);
           const totalPct = totalTotal ? Math.round(totalCorrect/totalTotal*100) : null;
           const clickAttr = isIvap ? `onclick="showPracDrilldown(${t})" style="cursor:pointer"` : '';
-          const prefix = isIvap ? 'T' : 'G';
+          const prefix = 'G';
           return `<tr>
             <td ${clickAttr} style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--fg);font-weight:500;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${generalNombre(t)}">
               ${prefix}${String(t).padStart(2,'0')}
@@ -1951,7 +1951,7 @@ function showPracDrilldown(tema) {
   el.innerHTML = `
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
       <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderPracResultsTable('bateria_ivap')">← Volver</button>
-      <span style="font-size:13px;font-weight:600">T${String(tema).padStart(2,'0')} — ${generalNombre(tema)}</span>
+      <span style="font-size:13px;font-weight:600">G${String(tema).padStart(2,'0')} — ${generalNombre(tema)}</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
       ${questions.map((q,i) => {
@@ -2057,7 +2057,7 @@ function renderPracSetup() {
   sel.innerHTML = '<option value="all">Todos los temas</option>';
   const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'bateria_ivap').map(q => q.tema))].sort((a,b)=>a-b);
   temas.forEach(t => {
-    const name = `T${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
+    const name = `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
     sel.innerHTML += `<option value="${t}">${name}</option>`;
   });
   sel.value = prev || 'all';
@@ -2296,7 +2296,7 @@ function showPracQuestion() {
   document.getElementById('pracFeedback').style.display = 'none';
   document.getElementById('pracProgress').textContent = `${pracState.idx + 1} / ${pracState.pool.length}`;
   document.getElementById('pracScore').textContent = `✅ ${pracState.correct} · ❌ ${pracState.total - pracState.correct}`;
-  document.getElementById('pracTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}`;
+  document.getElementById('pracTemaBadge').textContent = `G${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}`;
   document.getElementById('pracPregunta').textContent = q.pregunta;
 
   // opciones
