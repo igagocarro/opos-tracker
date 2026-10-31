@@ -1211,12 +1211,10 @@ let selectedDayIndex = null; // 0=Mon … 6=Sun
 
 function getWeekSessions(dateStr) {
   // Lee las sesiones del día desde state.planSessions (cargado de Supabase)
-  const rows = state.planSessions.filter(r => r.date === dateStr);
+  const rows = state.planSessions.filter(r => r.date === dateStr && r.type !== 'descanso');
   return rows.map(r => {
     const key = `${dateStr}:${r.type}:${r.id}`;
-    if (r.type === 'descanso') {
-      return {type:'Descanso',icon:'🛏',key,topics:[],isRest:true,planId:r.id};
-    } else if (r.type === 'general') {
+    if (r.type === 'general') {
       return {type:'General',icon:'⚖️',key,topics:[],isGeneral:true,planId:r.id};
     } else {
       // especifica — buscar temas del bloque de la semana
@@ -1335,7 +1333,11 @@ function renderDayDetail(ws) {
     </div>`;
 
   if (sessions.length === 0) {
-    html += `<div class="rest-row">🛏 Sin sesiones</div>`;
+    html += `<div class="rest-row" style="padding:24px 14px;display:flex;flex-direction:column;align-items:center;gap:6px">
+      <div style="font-size:32px">🛏</div>
+      <div style="font-weight:600;font-size:14px;color:var(--fg2)">Día de descanso</div>
+      <div style="font-size:12px;color:var(--fg3)">No hay sesiones programadas para hoy</div>
+    </div>`;
   } else {
     for (const s of sessions) {
       const done = state.sessions[s.key] === 'done';
@@ -1344,16 +1346,7 @@ function renderDayDetail(ws) {
         <button class="session-act-btn danger" data-delete="${s.planId}">🗑</button>
       </div>`;
 
-      if (s.isRest) {
-        html += `<div class="session-row">
-          <div class="session-row-icon">${s.icon}</div>
-          <div class="session-row-info">
-            <div class="session-row-type">${s.type}</div>
-            ${actionBtns}
-          </div>
-          <button class="check-btn ${done?'done':''}" data-key="${s.key}">${done?'✓':''}</button>
-        </div>`;
-      } else if (s.isGeneral) {
+      if (s.isGeneral) {
         html += `<div class="session-row">
           <div class="session-row-icon">${s.icon}</div>
           <div class="session-row-info">
@@ -1473,10 +1466,11 @@ function showMovePanel(id, fromDate, ws) {
   const wrap = document.getElementById('movePanelWrap');
   if (!wrap) return;
   const DAY_NAMES_SHORT = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  // Solo los 7 días de la semana actual, excluyendo el día de origen
   let opts = '';
-  for (let n = -14; n <= 30; n++) {
-    if (n === 0) continue;
-    const d = addDays(fromDate, n);
+  for (let n = 0; n <= 6; n++) {
+    const d = addDays(ws, n);
+    if (d === fromDate) continue;
     const dow = parseDate(d).getDay();
     opts += `<option value="${d}">${DAY_NAMES_SHORT[dow]} ${fmtDateShort(d)}</option>`;
   }
@@ -1504,7 +1498,6 @@ function showAddPanel(dateStr, ws) {
     <select id="addTypeSel" style="flex:1;min-width:120px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--fg);font-size:13px">
       <option value="especifica">📈 Específica</option>
       <option value="general">⚖️ General</option>
-      <option value="descanso">🛏 Descanso</option>
     </select>
     <button class="btn btn-primary" style="font-size:12px;padding:5px 12px" id="confirmAddBtn">Añadir</button>
     <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px" onclick="document.getElementById('movePanelWrap').style.display='none'">Cancelar</button>
