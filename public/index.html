@@ -1076,6 +1076,7 @@ async function syncAll() {
         ...q,
         tema: parseInt(q.tema) || 0,
         fuente: (q.fuente || 'bateria_ivap').trim(),
+        parte: (q.parte || 'general').trim(),
         opciones,
         correctas,
       };
@@ -1085,19 +1086,28 @@ async function syncAll() {
     // Inicializar answers históricos para ordenamiento "Peores %" y "Menos respondidas"
     pracState.answers = {};
     apuntesState.answers = {};
+    especificaState.answers = {};
+    // Mapa rápido question_id -> parte para enrutar respuestas correctamente
+    const qParteMap = {};
+    (state.questions || []).forEach(q => { qParteMap[q.id] = q.parte || 'general'; });
     state.practiceAnswers.forEach(a => {
-      if ((a.fuente || 'bateria_ivap') === 'bateria_ivap') {
+      const fuente = a.fuente || 'bateria_ivap';
+      if (fuente === 'bateria_ivap') {
         if (!pracState.answers[a.question_id]) pracState.answers[a.question_id] = {correct:0, total:0};
         pracState.answers[a.question_id].total++;
         if (a.correct) pracState.answers[a.question_id].correct++;
-      } else if (a.fuente === 'apuntes') {
-        if (!apuntesState.answers[a.question_id]) apuntesState.answers[a.question_id] = {correct:0, total:0};
-        apuntesState.answers[a.question_id].total++;
-        if (a.correct) apuntesState.answers[a.question_id].correct++;
-      } else if (a.fuente === 'especifica') {
-        if (!especificaState.answers[a.question_id]) especificaState.answers[a.question_id] = {correct:0, total:0};
-        especificaState.answers[a.question_id].total++;
-        if (a.correct) especificaState.answers[a.question_id].correct++;
+      } else {
+        // fuente='apuntes' (o legado 'especifica'): usar parte de la pregunta para enrutar
+        const parte = fuente === 'especifica' ? 'especifica' : (qParteMap[a.question_id] || 'general');
+        if (parte === 'especifica') {
+          if (!especificaState.answers[a.question_id]) especificaState.answers[a.question_id] = {correct:0, total:0};
+          especificaState.answers[a.question_id].total++;
+          if (a.correct) especificaState.answers[a.question_id].correct++;
+        } else {
+          if (!apuntesState.answers[a.question_id]) apuntesState.answers[a.question_id] = {correct:0, total:0};
+          apuntesState.answers[a.question_id].total++;
+          if (a.correct) apuntesState.answers[a.question_id].correct++;
+        }
       }
     });
 
@@ -1457,8 +1467,15 @@ async function movePlanSession(id, newDate) {
   if (!row) return;
   row.date = newDate;
   if (supabaseReady) {
-    try { await db.from('plan_sessions').update({date: newDate}).eq('id', id); }
-    catch(e) { console.warn('Error moving plan session:', e); }
+    try {
+      const { data, error } = await db.from('plan_sessions').update({date: newDate}).eq('id', Number(id)).select();
+      if (error) {
+        console.error('Error moving plan session in Supabase:', JSON.stringify(error));
+        alert('Error al mover la sesión: ' + (error.message || JSON.stringify(error)));
+      } else {
+        console.log('Plan session moved OK:', data);
+      }
+    } catch(e) { console.warn('Error moving plan session:', e); }
   }
 }
 
@@ -1944,7 +1961,17 @@ function switchResTab(tab) {
 
 function renderPracResultsTable(fuente) {
   const el = document.getElementById('pracResultsTable');
-  const answers = state.practiceAnswers.filter(a => (a.fuente || 'bateria_ivap') === fuente);
+  // Para 'especifica' y 'apuntes' necesitamos mirar la parte de la pregunta,
+  // porque practice_answers.fuente solo distingue bateria_ivap vs apuntes
+  const qParteMap = {};
+  (state.questions || []).forEach(q => { qParteMap[q.id] = q.parte || 'general'; });
+  const answers = state.practiceAnswers.filter(a => {
+    const f = a.fuente || 'bateria_ivap';
+    if (fuente === 'bateria_ivap') return f === 'bateria_ivap';
+    if (fuente === 'apuntes') return (f === 'apuntes' || f === 'especifica') && (qParteMap[a.question_id] || 'general') === 'general'; // legado especifica ignorado aquí
+    if (fuente === 'especifica') return (f === 'apuntes' || f === 'especifica') && (qParteMap[a.question_id] || 'general') === 'especifica';
+    return false;
+  });
   if (!answers.length) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Practica para ver tus resultados</div></div>';
     return;
@@ -2161,7 +2188,7 @@ function renderApuntesSetup() {
   if (!sel) return;
   const prev = sel.value;
   sel.innerHTML = '<option value="all">Todos los temas</option>';
-  const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'apuntes').map(q => q.tema))].sort((a,b)=>a-b);
+  const temas = [...new Set((state.questions || []).filter(q => q.parte === 'general' && q.fuente === 'apuntes').map(q => q.tema))].sort((a,b)=>a-b);
   temas.forEach(t => {
     const name = `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
     sel.innerHTML += `<option value="${t}">${name}</option>`;
@@ -2187,7 +2214,7 @@ function buildApuntesPool() {
   const difVal = document.getElementById('apuntesDifSelect')?.value || 'all';
   const order = document.getElementById('apuntesOrderSelect')?.value || 'random';
 
-  let pool = qs.filter(q => q.fuente === 'apuntes');
+  let pool = qs.filter(q => q.parte === 'general' && q.fuente === 'apuntes');
   if (temaVal !== 'all') pool = pool.filter(q => String(q.tema) === String(temaVal));
   if (difVal !== 'all') pool = pool.filter(q => q.dificultad === difVal);
 
@@ -2332,7 +2359,7 @@ function renderEspSetup() {
   if (!sel) return;
   const prev = sel.value;
   sel.innerHTML = '<option value="all">Todos los temas</option>';
-  const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'especifica').map(q => q.tema))].sort((a,b) => a-b);
+  const temas = [...new Set((state.questions || []).filter(q => q.parte === 'especifica').map(q => q.tema))].sort((a,b) => a-b);
   temas.forEach(t => {
     const name = `T${String(t).padStart(2,'0')} — ${(TEMAS.find(x => x.t == t) || {}).nombre || 'Tema ' + t}`;
     sel.insertAdjacentHTML('beforeend', `<option value="${t}">${name}</option>`);
@@ -2351,7 +2378,7 @@ function renderEspStats() {
 }
 
 function buildEspPool() {
-  const qs = (state.questions || []).filter(q => q.fuente === 'especifica');
+  const qs = (state.questions || []).filter(q => q.parte === 'especifica');
   const temaVal = document.getElementById('espTemaSelect')?.value || 'all';
   const dif = document.getElementById('espDifSelect')?.value || 'all';
   const order = document.getElementById('espOrderSelect')?.value || 'random';
@@ -2444,10 +2471,10 @@ function answerEsp(btn, correctIdxs, opts) {
   especificaState.answers[id].total++;
   if (isCorrect) especificaState.answers[id].correct++;
 
-  state.practiceAnswers.push({ question_id: id, fuente: 'especifica', tema: q.tema, correct: isCorrect, answered_at: new Date().toISOString() });
+  state.practiceAnswers.push({ question_id: id, fuente: 'apuntes', tema: q.tema, correct: isCorrect, answered_at: new Date().toISOString() });
 
   if (supabaseReady) {
-    db.from('practice_answers').insert({ question_id: id, fuente: 'especifica', tema: q.tema, correct: isCorrect })
+    db.from('practice_answers').insert({ question_id: id, fuente: 'apuntes', tema: q.tema, correct: isCorrect })
       .then(({error}) => { if (error) console.warn('Error guardando respuesta:', error); });
   }
 
