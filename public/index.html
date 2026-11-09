@@ -1075,8 +1075,8 @@ async function syncAll() {
       return {
         ...q,
         tema: parseInt(q.tema) || 0,
-        fuente: (q.fuente || 'bateria_ivap').trim(),
-        parte: (q.parte || 'general').trim(),
+        fuente: (q.fuente || 'bateria_ivap').trim().toLowerCase(),
+        parte: (q.parte || 'general').trim().toLowerCase(),
         opciones,
         correctas,
       };
