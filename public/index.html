@@ -2016,6 +2016,15 @@ function renderPracResultsTable(fuente) {
   };
 
   const isIvap = fuente === 'bateria_ivap';
+  const isEsp = fuente === 'especifica';
+  const isApuntes = fuente === 'apuntes';
+
+  // Nombre de tema según pestaña
+  const temaNombre = (t) => {
+    if (isEsp) return (TEMAS.find(x => x.t == t) || {}).nombre || `Tema ${t}`;
+    return generalNombre(t);
+  };
+  const temaPrefix = isEsp ? 'T' : 'G';
 
   el.innerHTML = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
     <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:280px">
@@ -2031,11 +2040,10 @@ function renderPracResultsTable(fuente) {
           const totalCorrect = Object.values(stats[t]||{}).reduce((s,v)=>s+v.correct,0);
           const totalTotal = Object.values(stats[t]||{}).reduce((s,v)=>s+v.total,0);
           const totalPct = totalTotal ? Math.round(totalCorrect/totalTotal*100) : null;
-          const clickAttr = isIvap ? `onclick="showPracDrilldown(${t})" style="cursor:pointer"` : '';
-          const prefix = 'G';
+          const clickAttr = `onclick="showPracDrilldown(${t},'${fuente}')" style="cursor:pointer"`;
           return `<tr>
-            <td ${clickAttr} style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--fg);font-weight:500;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${generalNombre(t)}">
-              ${prefix}${String(t).padStart(2,'0')}
+            <td ${clickAttr} style="padding:4px 6px;border-bottom:1px solid var(--border);color:var(--fg);font-weight:500;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis" title="${temaNombre(t)}">
+              ${temaPrefix}${String(t).padStart(2,'0')}
             </td>
             ${months.map(m => {
               const d = stats[t]?.[m];
@@ -2050,9 +2058,28 @@ function renderPracResultsTable(fuente) {
   </div>`;
 }
 
-function showPracDrilldown(tema) {
-  const answers = state.practiceAnswers.filter(a => (a.fuente || 'bateria_ivap') === 'bateria_ivap' && a.tema === tema);
-  const questions = state.questions.filter(q => q.tema === tema);
+function showPracDrilldown(tema, fuente) {
+  fuente = fuente || 'bateria_ivap';
+  const qParteMap = {};
+  (state.questions || []).forEach(q => { qParteMap[q.id] = q.parte || 'general'; });
+
+  const answers = state.practiceAnswers.filter(a => {
+    if (a.tema !== tema) return false;
+    const f = a.fuente || 'bateria_ivap';
+    if (fuente === 'bateria_ivap') return f === 'bateria_ivap';
+    if (fuente === 'apuntes') return (f === 'apuntes' || f === 'especifica') && (qParteMap[a.question_id] || 'general') === 'general';
+    if (fuente === 'especifica') return (f === 'apuntes' || f === 'especifica') && (qParteMap[a.question_id] || 'general') === 'especifica';
+    return false;
+  });
+
+  const isEsp = fuente === 'especifica';
+  const questions = state.questions.filter(q => {
+    if (q.tema !== tema) return false;
+    if (fuente === 'bateria_ivap') return (q.fuente || 'bateria_ivap') === 'bateria_ivap';
+    if (fuente === 'apuntes') return q.fuente === 'apuntes' && (q.parte || 'general') === 'general';
+    if (fuente === 'especifica') return (q.parte || 'general') === 'especifica';
+    return false;
+  });
   if (!questions.length) return;
 
   // Stats por pregunta
@@ -2063,11 +2090,15 @@ function showPracDrilldown(tema) {
     if (a.correct) qStats[a.question_id].correct++;
   });
 
+  const temaLabel = isEsp
+    ? `T${String(tema).padStart(2,'0')} — ${(TEMAS.find(x=>x.t==tema)||{}).nombre||'Tema '+tema}`
+    : `G${String(tema).padStart(2,'0')} — ${generalNombre(tema)}`;
+
   const el = document.getElementById('pracResultsTable');
   el.innerHTML = `
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
-      <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderPracResultsTable('bateria_ivap')">← Volver</button>
-      <span style="font-size:13px;font-weight:600">G${String(tema).padStart(2,'0')} — ${generalNombre(tema)}</span>
+      <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderPracResultsTable('${fuente}')">← Volver</button>
+      <span style="font-size:13px;font-weight:600">${temaLabel}</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
       ${questions.map((q,i) => {
@@ -2076,9 +2107,9 @@ function showPracDrilldown(tema) {
         const bg = pct===null ? 'var(--surface2)' : pct>=80 ? 'var(--green-dim)' : pct>=60 ? 'var(--amber-dim)' : 'var(--red-dim)';
         const fg = pct===null ? 'var(--fg3)' : pct>=80 ? 'var(--green)' : pct>=60 ? 'var(--amber)' : 'var(--red)';
         return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border)">
-          <span style="font-size:10px;color:var(--fg3);min-width:20px;padding-top:1px">#${i+1}</span>
+          <span style="font-size:10px;color:var(--fg3);min-width:20px;padding-top:1px;flex-shrink:0">#${q.id}</span>
           <span style="flex:1;font-size:12px;color:var(--fg);line-height:1.4">${q.pregunta.slice(0,80)}${q.pregunta.length>80?'…':''}</span>
-          <span style="min-width:36px;text-align:center;font-size:11px;font-weight:700;color:${fg};background:${bg};border-radius:6px;padding:2px 5px">${pct!==null ? pct+'%' : '—'}</span>
+          <span style="min-width:36px;text-align:center;font-size:11px;font-weight:700;color:${fg};background:${bg};border-radius:6px;padding:2px 5px;flex-shrink:0">${pct!==null ? pct+'%' : '—'}</span>
         </div>`;
       }).join('')}
     </div>`;
@@ -2258,7 +2289,7 @@ function showApuntesQuestion() {
   document.getElementById('apuntesFeedback').style.display = 'none';
   document.getElementById('apuntesProgress').textContent = `${apuntesState.idx + 1} / ${apuntesState.pool.length}`;
   document.getElementById('apuntesScore').textContent = `✅ ${apuntesState.correct} · ❌ ${apuntesState.total - apuntesState.correct}`;
-  document.getElementById('apuntesTemaBadge').textContent = `G${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}${q.dificultad ? ` · ${q.dificultad}` : ''}`;
+  document.getElementById('apuntesTemaBadge').textContent = `G${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}${q.dificultad ? ` · ${q.dificultad}` : ''} · ${q.id}`;
   document.getElementById('apuntesPregunta').textContent = q.pregunta;
 
   const opciones = q.opciones;
@@ -2424,7 +2455,7 @@ function showEspQuestion() {
   document.getElementById('espProgress').textContent = `${especificaState.idx + 1} / ${especificaState.pool.length}`;
   document.getElementById('espScore').textContent = `✅ ${especificaState.correct} · ❌ ${especificaState.total - especificaState.correct}`;
   const temaNombre = (TEMAS.find(x => x.t == q.tema) || {}).nombre || 'Tema ' + q.tema;
-  document.getElementById('espTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${temaNombre}${q.dificultad ? ` · ${q.dificultad}` : ''}`;
+  document.getElementById('espTemaBadge').textContent = `T${String(q.tema).padStart(2,'0')} — ${temaNombre}${q.dificultad ? ` · ${q.dificultad}` : ''} · ${q.id}`;
   document.getElementById('espPregunta').textContent = q.pregunta;
 
   const shuffle = document.getElementById('espShuffleOpts')?.checked ?? true;
@@ -2612,7 +2643,7 @@ function showPracQuestion() {
   document.getElementById('pracFeedback').style.display = 'none';
   document.getElementById('pracProgress').textContent = `${pracState.idx + 1} / ${pracState.pool.length}`;
   document.getElementById('pracScore').textContent = `✅ ${pracState.correct} · ❌ ${pracState.total - pracState.correct}`;
-  document.getElementById('pracTemaBadge').textContent = `G${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)}`;
+  document.getElementById('pracTemaBadge').textContent = `G${String(q.tema).padStart(2,'0')} — ${generalNombre(q.tema)} · ${q.id}`;
   document.getElementById('pracPregunta').textContent = q.pregunta;
 
   // opciones
