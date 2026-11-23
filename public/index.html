@@ -641,6 +641,7 @@
                 <div id="pracFeedback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:13px"></div>
                 <div style="display:flex;gap:8px;margin-top:14px">
                   <button class="btn btn-secondary" style="flex:1" onclick="stopPrac()">✕ Salir</button>
+                  <button class="btn btn-secondary" style="flex:1" id="pracSkipBtn" onclick="nextPracQuestion()">Saltar ⇥</button>
                   <button class="btn btn-primary" style="flex:1" id="pracNextBtn" onclick="nextPracQuestion()" disabled>Siguiente →</button>
                 </div>
               </div>
@@ -718,6 +719,7 @@
                 <div id="apuntesFeedback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:13px"></div>
                 <div style="display:flex;gap:8px;margin-top:14px">
                   <button class="btn btn-secondary" style="flex:1" onclick="stopApuntes()">✕ Salir</button>
+                  <button class="btn btn-secondary" style="flex:1" id="apuntesSkipBtn" onclick="nextApuntesQuestion()">Saltar ⇥</button>
                   <button class="btn btn-primary" style="flex:1" id="apuntesNextBtn" onclick="nextApuntesQuestion()" disabled>Siguiente →</button>
                 </div>
               </div>
@@ -794,6 +796,7 @@
               <div id="espFeedback" style="display:none;margin-top:12px;padding:10px;border-radius:8px;font-size:13px"></div>
               <div style="display:flex;gap:8px;margin-top:14px">
                 <button class="btn btn-secondary" style="flex:1" onclick="stopEsp()">✕ Salir</button>
+                <button class="btn btn-secondary" style="flex:1" id="espSkipBtn" onclick="nextEspQuestion()">Saltar ⇥</button>
                 <button class="btn btn-primary" style="flex:1" id="espNextBtn" onclick="nextEspQuestion()" disabled>Siguiente →</button>
               </div>
             </div>
@@ -2295,6 +2298,7 @@ function showApuntesQuestion() {
   apuntesState.answered = false;
 
   document.getElementById('apuntesNextBtn').disabled = true;
+  document.getElementById('apuntesSkipBtn').style.display = '';
   document.getElementById('apuntesFeedback').style.display = 'none';
   document.getElementById('apuntesProgress').textContent = `${apuntesState.idx + 1} / ${apuntesState.pool.length}`;
   document.getElementById('apuntesScore').textContent = `✅ ${apuntesState.correct} · ❌ ${apuntesState.total - apuntesState.correct}`;
@@ -2365,6 +2369,7 @@ function answerApuntes(btn, correctIdxs) {
   }
 
   document.getElementById('apuntesNextBtn').disabled = false;
+  document.getElementById('apuntesSkipBtn').style.display = 'none';
   document.getElementById('apuntesScore').textContent = `✅ ${apuntesState.correct} · ❌ ${apuntesState.total - apuntesState.correct}`;
   renderMath(document.getElementById('apuntesFeedback'));
 }
@@ -2460,6 +2465,7 @@ function showEspQuestion() {
   especificaState.answered = false;
 
   document.getElementById('espNextBtn').disabled = true;
+  document.getElementById('espSkipBtn').style.display = '';
   document.getElementById('espFeedback').style.display = 'none';
   document.getElementById('espProgress').textContent = `${especificaState.idx + 1} / ${especificaState.pool.length}`;
   document.getElementById('espScore').textContent = `✅ ${especificaState.correct} · ❌ ${especificaState.total - especificaState.correct}`;
@@ -2530,6 +2536,7 @@ function answerEsp(btn, correctIdxs, opts) {
   }
 
   document.getElementById('espNextBtn').disabled = false;
+  document.getElementById('espSkipBtn').style.display = 'none';
   document.getElementById('espScore').textContent = `✅ ${especificaState.correct} · ❌ ${especificaState.total - especificaState.correct}`;
   renderMath(document.getElementById('espFeedback'));
 }
@@ -2649,6 +2656,7 @@ function showPracQuestion() {
   pracState.answered = false;
 
   document.getElementById('pracNextBtn').disabled = true;
+  document.getElementById('pracSkipBtn').style.display = '';
   document.getElementById('pracFeedback').style.display = 'none';
   document.getElementById('pracProgress').textContent = `${pracState.idx + 1} / ${pracState.pool.length}`;
   document.getElementById('pracScore').textContent = `✅ ${pracState.correct} · ❌ ${pracState.total - pracState.correct}`;
@@ -2731,6 +2739,7 @@ function answerPrac(btn, correctIdxs) {
   fb.textContent = isCorrect ? '✅ ¡Correcto!' : `❌ Incorrecto. La respuesta correcta es: ${pracState.currentQ.opciones.filter((_,i) => correctIdxs.includes(i)).join(' / ')}`;
 
   document.getElementById('pracNextBtn').disabled = false;
+  document.getElementById('pracSkipBtn').style.display = 'none';
   document.getElementById('pracScore').textContent = `✅ ${pracState.correct} · ❌ ${pracState.total - pracState.correct}`;
 }
 
