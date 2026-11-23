@@ -1944,15 +1944,21 @@ function renderResumen() {
 
 let currentResTab = 'bateria_ivap';
 let resMode = 'pct'; // 'pct' | 'ratio'
+let currentDrilldown = null; // {tema, fuente} cuando estás en el detalle de un tema
 
 function toggleResMode() {
   resMode = resMode === 'pct' ? 'ratio' : 'pct';
   document.getElementById('resModeBtn').textContent = resMode === 'pct' ? '%' : 'n/n';
-  renderPracResultsTable(currentResTab);
+  if (currentDrilldown) {
+    showPracDrilldown(currentDrilldown.tema, currentDrilldown.fuente);
+  } else {
+    renderPracResultsTable(currentResTab);
+  }
 }
 
 function switchResTab(tab) {
   currentResTab = tab;
+  currentDrilldown = null;
   document.getElementById('resTabIvap').className = 'btn btn-sm' + (tab==='bateria_ivap' ? ' btn-primary' : ' btn-secondary');
   document.getElementById('resTabApuntes').className = 'btn btn-sm' + (tab==='apuntes' ? ' btn-primary' : ' btn-secondary');
   document.getElementById('resTabEspecifica').className = 'btn btn-sm' + (tab==='especifica' ? ' btn-primary' : ' btn-secondary');
@@ -2060,6 +2066,7 @@ function renderPracResultsTable(fuente) {
 
 function showPracDrilldown(tema, fuente) {
   fuente = fuente || 'bateria_ivap';
+  currentDrilldown = {tema, fuente};
   const qParteMap = {};
   (state.questions || []).forEach(q => { qParteMap[q.id] = q.parte || 'general'; });
 
@@ -2097,22 +2104,24 @@ function showPracDrilldown(tema, fuente) {
   const el = document.getElementById('pracResultsTable');
   el.innerHTML = `
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px">
-      <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="renderPracResultsTable('${fuente}')">← Volver</button>
+      <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="currentDrilldown=null;renderPracResultsTable('${fuente}')">← Volver</button>
       <span style="font-size:13px;font-weight:600">${temaLabel}</span>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
-      ${questions.map((q,i) => {
+      ${questions.map((q) => {
         const s = qStats[q.id];
         const pct = s ? Math.round(s.correct/s.total*100) : null;
         const bg = pct===null ? 'var(--surface2)' : pct>=80 ? 'var(--green-dim)' : pct>=60 ? 'var(--amber-dim)' : 'var(--red-dim)';
         const fg = pct===null ? 'var(--fg3)' : pct>=80 ? 'var(--green)' : pct>=60 ? 'var(--amber)' : 'var(--red)';
+        const val = s ? (resMode === 'ratio' ? `${s.correct}/${s.total}` : pct+'%') : '—';
         return `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border)">
-          <span style="font-size:10px;color:var(--fg3);min-width:20px;padding-top:1px;flex-shrink:0">#${q.id}</span>
+          <span style="font-size:10px;color:var(--fg3);min-width:28px;padding-top:1px;flex-shrink:0">#${q.id}</span>
           <span style="flex:1;font-size:12px;color:var(--fg);line-height:1.4">${q.pregunta.slice(0,80)}${q.pregunta.length>80?'…':''}</span>
-          <span style="min-width:36px;text-align:center;font-size:11px;font-weight:700;color:${fg};background:${bg};border-radius:6px;padding:2px 5px;flex-shrink:0">${pct!==null ? pct+'%' : '—'}</span>
+          <span style="min-width:40px;text-align:center;font-size:11px;font-weight:700;color:${fg};background:${bg};border-radius:6px;padding:2px 5px;flex-shrink:0">${val}</span>
         </div>`;
       }).join('')}
     </div>`;
+  renderMath(el);
 }
 
 
