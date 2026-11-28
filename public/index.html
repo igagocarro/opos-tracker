@@ -293,6 +293,15 @@
   .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
   .form-textarea { resize: vertical; min-height: 80px; }
   .score-row { display: flex; gap: 8px; align-items: center; }
+  /* Multi-tema dropdown */
+  .multi-tema-wrap { position: relative; }
+  .multi-tema-btn { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--fg); font-size: 13px; text-align: left; cursor: pointer; transition: border-color .15s; }
+  .multi-tema-btn:hover { border-color: var(--accent); }
+  .multi-tema-dropdown { position: absolute; z-index: 200; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.18); max-height: 240px; overflow-y: auto; padding: 6px 0; }
+  .multi-tema-dropdown label { display: flex; align-items: center; gap: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; color: var(--fg); }
+  .multi-tema-dropdown label:hover { background: var(--surface2); }
+  .multi-tema-dropdown .sep { height: 1px; background: var(--border); margin: 4px 0; }
+  .multi-tema-dropdown .all-row { font-weight: 600; color: var(--accent); }
   .score-row .form-input { flex: 1; }
   .score-display { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); min-width: 48px; text-align: center; }
   .btn { padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: opacity .15s, transform .1s; font-family: 'Inter', system-ui; }
@@ -598,10 +607,11 @@
             <div class="card-header"><span class="card-title">Configurar práctica</span></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
               <div>
-                <label class="form-label">Tema</label>
-                <select class="form-select" id="pracTemaSelect" onchange="renderPracStats()">
-                  <option value="all">Todos los temas</option>
-                </select>
+                <label class="form-label">Temas</label>
+                <div class="multi-tema-wrap" id="pracTemaWrap">
+                  <button type="button" class="multi-tema-btn" id="pracTemaBtn" onclick="toggleTemaDropdown('prac')">Todos los temas ▾</button>
+                  <div class="multi-tema-dropdown" id="pracTemaDropdown" style="display:none"></div>
+                </div>
               </div>
               <div style="display:flex;gap:8px">
                 <div style="flex:1">
@@ -670,10 +680,11 @@
             <div class="card-header"><span class="card-title">Configurar práctica</span></div>
             <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
               <div>
-                <label class="form-label">Tema</label>
-                <select class="form-select" id="apuntesTemaSelect" onchange="renderApuntesStats()">
-                  <option value="all">Todos los temas</option>
-                </select>
+                <label class="form-label">Temas</label>
+                <div class="multi-tema-wrap" id="apuntesTemaWrap">
+                  <button type="button" class="multi-tema-btn" id="apuntesTemaBtn" onclick="toggleTemaDropdown('apuntes')">Todos los temas ▾</button>
+                  <div class="multi-tema-dropdown" id="apuntesTemaDropdown" style="display:none"></div>
+                </div>
               </div>
               <div style="display:flex;gap:8px">
                 <div style="flex:1">
@@ -747,10 +758,11 @@
           <div class="card-header"><span class="card-title">Configurar práctica</span></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
             <div>
-              <label class="form-label">Tema</label>
-              <select class="form-select" id="espTemaSelect" onchange="renderEspStats()">
-                <option value="all">Todos los temas</option>
-              </select>
+              <label class="form-label">Temas</label>
+              <div class="multi-tema-wrap" id="espTemaWrap">
+                <button type="button" class="multi-tema-btn" id="espTemaBtn" onclick="toggleTemaDropdown('esp')">Todos los temas ▾</button>
+                <div class="multi-tema-dropdown" id="espTemaDropdown" style="display:none"></div>
+              </div>
             </div>
             <div style="display:flex;gap:8px">
               <div style="flex:1">
@@ -2210,33 +2222,92 @@ function switchPracSubtab(sub) {
   document.getElementById('psubtab-apuntes').style.display = sub === 'apuntes' ? '' : 'none';
 }
 
-function renderPracSetup() {
-  const sel = document.getElementById('pracTemaSelect');
-  if (!sel) return;
-  const prev = sel.value;
-  sel.innerHTML = '<option value="all">Todos los temas</option>';
-  const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'bateria_ivap').map(q => q.tema))].sort((a,b)=>a-b);
-  temas.forEach(t => {
-    const name = `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
-    sel.innerHTML += `<option value="${t}">${name}</option>`;
+// ── Multi-tema state ──────────────────────────────────────
+const temaSelections = { prac: new Set(), apuntes: new Set(), esp: new Set() };
+
+function toggleTemaDropdown(tab) {
+  const dd = document.getElementById(`${tab === 'prac' ? 'prac' : tab === 'apuntes' ? 'apuntes' : 'esp'}TemaDropdown`);
+  dd.style.display = dd.style.display === 'none' ? '' : 'none';
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', e => {
+  ['prac','apuntes','esp'].forEach(tab => {
+    const wrap = document.getElementById(`${tab}TemaWrap`);
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById(`${tab}TemaDropdown`).style.display = 'none';
+    }
   });
-  sel.value = prev || 'all';
+});
+
+function getSelectedTemas(tab) {
+  return temaSelections[tab]; // Set of tema numbers, empty = todos
+}
+
+function buildTemaDropdown(tab, temas, labelFn, onChangeFn) {
+  const dd = document.getElementById(`${tab}TemaDropdown`);
+  const sel = temaSelections[tab];
+  // Remove temas no longer available
+  sel.forEach(t => { if (!temas.includes(t)) sel.delete(t); });
+
+  let html = `<label class="all-row" style="display:flex;align-items:center;gap:8px;padding:7px 12px;font-size:13px;cursor:pointer;font-weight:600;color:var(--accent)">
+    <input type="checkbox" id="${tab}TemaAll" ${sel.size === 0 ? 'checked' : ''} onchange="onTemaAllChange('${tab}')"> Todos los temas
+  </label><div class="sep"></div>`;
+  temas.forEach(t => {
+    html += `<label>
+      <input type="checkbox" class="${tab}-tema-cb" value="${t}" ${sel.has(t) ? 'checked' : ''} onchange="onTemaCbChange('${tab}')">
+      ${labelFn(t)}
+    </label>`;
+  });
+  dd.innerHTML = html;
+  updateTemaBtn(tab);
+}
+
+function onTemaAllChange(tab) {
+  const checked = document.getElementById(`${tab}TemaAll`).checked;
+  if (checked) {
+    temaSelections[tab].clear();
+    document.querySelectorAll(`.${tab}-tema-cb`).forEach(cb => cb.checked = false);
+  }
+  updateTemaBtn(tab);
+  ({ prac: renderPracStats, apuntes: renderApuntesStats, esp: renderEspStats })[tab]();
+}
+
+function onTemaCbChange(tab) {
+  const sel = temaSelections[tab];
+  sel.clear();
+  document.querySelectorAll(`.${tab}-tema-cb:checked`).forEach(cb => sel.add(Number(cb.value)));
+  document.getElementById(`${tab}TemaAll`).checked = sel.size === 0;
+  updateTemaBtn(tab);
+  ({ prac: renderPracStats, apuntes: renderApuntesStats, esp: renderEspStats })[tab]();
+}
+
+function updateTemaBtn(tab) {
+  const sel = temaSelections[tab];
+  const btn = document.getElementById(`${tab}TemaBtn`);
+  if (!btn) return;
+  if (sel.size === 0) {
+    btn.textContent = 'Todos los temas ▾';
+  } else if (sel.size === 1) {
+    const t = [...sel][0];
+    const labels = { prac: t => `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`, apuntes: t => `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`, esp: t => `T${String(t).padStart(2,'0')} — ${(TEMAS.find(x=>x.t==t)||{}).nombre||'Tema '+t}` };
+    btn.textContent = labels[tab](t) + ' ▾';
+  } else {
+    btn.textContent = `${sel.size} temas seleccionados ▾`;
+  }
+}
+
+function renderPracSetup() {
+  const temas = [...new Set((state.questions || []).filter(q => q.fuente === 'bateria_ivap').map(q => q.tema))].sort((a,b)=>a-b);
+  buildTemaDropdown('prac', temas, t => `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`, renderPracStats);
   renderPracStats();
   renderApuntesSetup();
   renderEspSetup();
 }
 
 function renderApuntesSetup() {
-  const sel = document.getElementById('apuntesTemaSelect');
-  if (!sel) return;
-  const prev = sel.value;
-  sel.innerHTML = '<option value="all">Todos los temas</option>';
   const temas = [...new Set((state.questions || []).filter(q => q.parte === 'general' && q.fuente === 'apuntes').map(q => q.tema))].sort((a,b)=>a-b);
-  temas.forEach(t => {
-    const name = `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`;
-    sel.innerHTML += `<option value="${t}">${name}</option>`;
-  });
-  sel.value = prev || 'all';
+  buildTemaDropdown('apuntes', temas, t => `G${String(t).padStart(2,'0')} — ${generalNombre(t)}`, renderApuntesStats);
   renderApuntesStats();
 }
 
@@ -2253,12 +2324,12 @@ const apuntesState = { pool: [], idx: 0, correct: 0, total: 0, answered: false, 
 
 function buildApuntesPool() {
   const qs = state.questions || [];
-  const temaVal = document.getElementById('apuntesTemaSelect')?.value || 'all';
+  const temasSel = temaSelections.apuntes;
   const difVal = document.getElementById('apuntesDifSelect')?.value || 'all';
   const order = document.getElementById('apuntesOrderSelect')?.value || 'random';
 
   let pool = qs.filter(q => q.parte === 'general' && q.fuente === 'apuntes');
-  if (temaVal !== 'all') pool = pool.filter(q => String(q.tema) === String(temaVal));
+  if (temasSel.size > 0) pool = pool.filter(q => temasSel.has(q.tema));
   if (difVal !== 'all') pool = pool.filter(q => q.dificultad === difVal);
 
   if (order === 'sequential') {
@@ -2400,16 +2471,8 @@ function stopApuntes() {
 const especificaState = { pool: [], idx: 0, correct: 0, total: 0, answered: false, currentQ: null, answers: {} };
 
 function renderEspSetup() {
-  const sel = document.getElementById('espTemaSelect');
-  if (!sel) return;
-  const prev = sel.value;
-  sel.innerHTML = '<option value="all">Todos los temas</option>';
   const temas = [...new Set((state.questions || []).filter(q => q.parte === 'especifica').map(q => q.tema))].sort((a,b) => a-b);
-  temas.forEach(t => {
-    const name = `T${String(t).padStart(2,'0')} — ${(TEMAS.find(x => x.t == t) || {}).nombre || 'Tema ' + t}`;
-    sel.insertAdjacentHTML('beforeend', `<option value="${t}">${name}</option>`);
-  });
-  sel.value = prev && sel.querySelector(`option[value="${prev}"]`) ? prev : 'all';
+  buildTemaDropdown('esp', temas, t => `T${String(t).padStart(2,'0')} — ${(TEMAS.find(x=>x.t==t)||{}).nombre||'Tema '+t}`, renderEspStats);
   renderEspStats();
 }
 
@@ -2424,10 +2487,10 @@ function renderEspStats() {
 
 function buildEspPool() {
   const qs = (state.questions || []).filter(q => q.parte === 'especifica');
-  const temaVal = document.getElementById('espTemaSelect')?.value || 'all';
+  const temasSel = temaSelections.esp;
   const dif = document.getElementById('espDifSelect')?.value || 'all';
   const order = document.getElementById('espOrderSelect')?.value || 'random';
-  let pool = qs.filter(q => (temaVal === 'all' || String(q.tema) === String(temaVal)) && (dif === 'all' || q.dificultad === dif));
+  let pool = qs.filter(q => (temasSel.size === 0 || temasSel.has(q.tema)) && (dif === 'all' || q.dificultad === dif));
   if (order === 'sequential') {
     pool = pool.slice().sort((a,b) => a.tema - b.tema || a.id - b.id);
   } else if (order === 'worst') {
@@ -2475,7 +2538,7 @@ function showEspQuestion() {
 
   const shuffle = document.getElementById('espShuffleOpts')?.checked ?? true;
   let opts = (q.opciones || []).map((o, i) => ({ text: o, orig: i }));
-  if (shuffle) opts = opts.sort(() => Math.random() - 0.5);
+  if (shuffle && !hasOptionReferences(q.opciones || [])) opts = opts.sort(() => Math.random() - 0.5);
 
   const correctas = Array.isArray(q.correctas) ? q.correctas : [q.correctas];
   // correctas are full text strings for específica
@@ -2604,13 +2667,13 @@ function renderPracStats() {
 
 function buildPool() {
   const qs = state.questions || [];
-  const temaVal = document.getElementById('pracTemaSelect')?.value || 'all';
+  const temasSel = temaSelections.prac;
   const exclT17 = document.getElementById('pracExcT17')?.checked ?? true;
   const order = document.getElementById('pracOrderSelect')?.value || 'random';
 
   let pool = qs.filter(q => q.fuente === 'bateria_ivap');
   if (exclT17) pool = pool.filter(q => q.tema !== 17);
-  if (temaVal !== 'all') pool = pool.filter(q => String(q.tema) === String(temaVal));
+  if (temasSel.size > 0) pool = pool.filter(q => temasSel.has(q.tema));
 
   if (order === 'sequential') {
     pool.sort((a,b) => a.tema - b.tema || a.id - b.id);
